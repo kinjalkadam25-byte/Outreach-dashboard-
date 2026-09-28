@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Finance outreach · CSI-KJSCE</title>
+<style>
+/* Tokens: recruitment-admin-panel frontend/app/globals.css, with every radius
+   set to 0 so boxes, inputs, buttons and chips are rectangles. */
+:root {
+  --bg:#0d0f13; --surface:#13161c; --surface-2:#191d25; --surface-3:#222731;
+  --line:#242932; --line-2:#333a46;
+  --ink:#e8eaee; --ink-2:#98a0b0; --ink-3:#656d7c;
+  --accent:#6d8dff; --accent-ink:#0b0d11; --accent-soft:rgba(109,141,255,.14); --accent-line:rgba(109,141,255,.45);
+  --good:#63b892; --warn:#d3a25c; --bad:#d4796f;
+  --score:#4fb3c9;
+  --radius:0; --radius-lg:0;
+  --measure:68ch;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+}
+* { box-sizing:border-box }
+html { -webkit-text-size-adjust:100% }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.6 var(--sans); -webkit-font-smoothing:antialiased }
+a { color:inherit }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px }
+.num { font-variant-numeric:tabular-nums }
+[hidden] { display:none !important }
+@media (prefers-reduced-motion:reduce) { * { animation:none !important; transition:none !important } }
+
+/* Particle field, faded behind the content column (drawn by script below) */
+#particles { position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none;
+  --fade:linear-gradient(to right, #000 0, #000 calc(50% - 680px), rgba(0,0,0,.15) calc(50% - 600px),
+    rgba(0,0,0,.15) calc(50% + 600px), #000 calc(50% + 680px), #000 100%);
+  -webkit-mask-image:var(--fade); mask-image:var(--fade) }
+
+/* App bar: chrome.jsx .bar */
+.bar { position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:18px; padding:0 20px; height:56px;
+  background:rgba(13,15,19,.88); backdrop-filter:blur(10px); border-bottom:1px solid var(--line) }
+.mark { font-size:13px; font-weight:650; letter-spacing:-.01em; white-space:nowrap }
+.mark span { color:var(--ink-3); font-weight:450 }
+.nav { display:flex; gap:2px; margin-left:4px }
+.nav a { text-decoration:none; font-size:13.5px; color:var(--ink-2); padding:6px 11px; white-space:nowrap }
+.nav a:hover { color:var(--ink); background:var(--surface-2) }
+.nav a[aria-current] { color:var(--ink); background:var(--surface-2); box-shadow:inset 0 0 0 1px var(--line-2) }
+.syncpill { margin-left:auto; display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-3);
+  text-decoration:none; border:1px solid var(--line-2); padding:4px 10px; white-space:nowrap }
+.syncpill::before { content:""; width:7px; height:7px; background:currentColor }
+.syncpill.ok { color:var(--good) } .syncpill.busy { color:var(--accent) } .syncpill.error { color:var(--bad); border-color:var(--bad) }
+
+/* Page furniture: chrome.jsx */
+.page { max-width:1240px; margin:0 auto; padding:30px 20px 90px }
+h1 { font-size:26px; line-height:1.2; letter-spacing:-.02em; margin:0; font-weight:700 }
+h2 { font-size:15px; letter-spacing:-.005em; margin:0; font-weight:600 }
+.lede { color:var(--ink-2); font-size:14px; margin:6px 0 0; max-width:var(--measure) }
+.eyebrow { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--accent); font-weight:600; margin:0 0 4px }
+.panel { background:var(--surface); border:1px solid var(--line) }
+.pad { padding:18px 20px }
+.hint { color:var(--ink-3); font-size:12.5px; margin:3px 0 0 }
+.empty { color:var(--ink-3); font-size:13px; padding:34px 16px; text-align:center; margin:0 }
+code { font:12.5px var(--mono); background:var(--surface-3); padding:1px 5px; color:var(--ink-2) }
+kbd { font:11.5px/1 var(--mono); background:var(--surface-3); border:1px solid var(--line-2); border-bottom-width:2px; padding:3px 5px; color:var(--ink-2) }
+
+/* Buttons: chrome.jsx .btn family */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; font:inherit; font-size:13.5px; line-height:1;
+  text-decoration:none; white-space:nowrap; background:var(--surface-2); color:var(--ink); border:1px solid var(--line-2);
+  padding:10px 15px; cursor:pointer }
+.btn:hover { border-color:var(--accent-line) }
+.btn:active { transform:translateY(1px) }
+.btn.primary { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600 }
+.btn.primary:hover { filter:brightness(1.08) }
+.btn.sm { padding:6px 10px; font-size:12.5px }
+.btn.ghost { background:transparent }
+.btn.danger:hover { border-color:var(--bad); color:var(--bad) }
+.btn[disabled], .btn[aria-disabled="true"] { opacity:.45; pointer-events:none }
+
+/* Fields */
+.field { margin-bottom:14px }
+.field > label, .field > .label { display:block; font-size:13px; font-weight:550; margin-bottom:5px }
+.opt { color:var(--ink-3); font-weight:400 }
+input[type=text], input[type=email], input[type=tel], input[type=url], input[type=search], input[type=password], textarea {
+  width:100%; background:var(--surface-2); border:1px solid var(--line-2); color:var(--ink); border-radius:0;
+  padding:9px 11px; font:inherit; font-size:14px }
+input::placeholder, textarea::placeholder { color:var(--ink-3) }
+input:hover, textarea:hover { border-color:var(--accent-line) }
+textarea { resize:vertical; min-height:80px; line-height:1.6 }
+.helper { font-size:12px; color:var(--ink-3); margin-top:4px; min-height:15px }
+.field.error input, .field.error textarea { border-color:var(--bad) }
+.field.error .helper { color:var(--bad) }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px }
+
+/* Status chips: rectangular tags tinted by --tone */
+.chip { --tone:var(--ink-2); display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:550; line-height:1.5;
+  padding:2px 8px; white-space:nowrap; color:var(--tone);
+  border:1px solid color-mix(in srgb, var(--tone) 45%, transparent);
+  background:color-mix(in srgb, var(--tone) 12%, transparent) }
+.chip::before { content:""; width:6px; height:6px; background:var(--tone); flex:none }
+.chip.solid { background:var(--tone); color:var(--accent-ink); border-color:var(--tone) }
+.chip.solid::before { background:var(--accent-ink) }
+.chip.plain::before { display:none }
+
+/* Chip dropdown: a button showing the current chip, a listbox of chips */
+.cs > button { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-height:42px;
+  background:var(--surface-2); border:1px solid var(--line-2); color:var(--ink); padding:6px 10px; font:inherit; cursor:pointer; text-align:left }
+.cs > button:hover { border-color:var(--accent-line) }
+.cs > button[aria-expanded="true"] { border-color:var(--accent) }
+.caret { width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid var(--ink-3); flex:none }
+.cs .ph { color:var(--ink-3); font-size:14px }
+.cs .pre { color:var(--ink-3); font-size:12.5px; margin-right:-2px }
+.cs.filter > button { width:auto; min-height:42px; gap:9px }
+.field.error .cs > button { border-color:var(--bad) }
+.cs.compact > button { width:auto; min-height:0; background:transparent; border-color:transparent; padding:3px 5px 3px 3px; gap:7px }
+.cs.compact > button:hover, .cs.compact > button[aria-expanded="true"] { background:var(--surface-2); border-color:var(--line-2) }
+.cs-pop { position:fixed; z-index:50; margin:0; padding:5px; list-style:none; background:var(--surface); border:1px solid var(--line-2);
+  box-shadow:0 12px 32px rgba(0,0,0,.45); max-height:320px; overflow-y:auto; outline:none }
+.cs-pop li { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:6px 8px; cursor:pointer }
+.cs-pop li.active { background:var(--surface-3) }
+.cs-pop li[aria-selected="true"]::after { content:"✓"; color:var(--ink-2); font-size:12px }
+
+/* Alerts */
+.alert { border:1px solid var(--warn); background:rgba(211,162,92,.1); padding:10px 12px; font-size:13px; margin:0 0 14px }
+.alert.bad { border-color:var(--bad); background:rgba(212,121,111,.1) }
+.alert b { font-weight:600 }
+.alert .btn { margin-top:8px }
+.linkish { background:none; border:0; padding:0; color:var(--accent); font:inherit; cursor:pointer; text-decoration:underline }
+
+/* Brands view */
+.head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(112px,1fr)); gap:8px; margin:22px 0 22px }
+.stat { text-align:left; font:inherit; color:inherit; cursor:pointer; background:var(--surface); border:1px solid var(--line);
+  padding:11px 13px; border-top:2px solid var(--tone, var(--line-2)) }
+.stat:hover { border-color:var(--accent-line); border-top-color:var(--tone, var(--accent-line)) }
+.stat[aria-pressed="true"] { background:var(--surface-2); box-shadow:inset 0 0 0 1px var(--tone, var(--accent)) }
+.stat b { display:block; font-size:22px; line-height:1.2; font-variant-numeric:tabular-nums }
+.stat span { color:var(--ink-3); font-size:12px }
+.work { display:grid; grid-template-columns:350px minmax(0,1fr); gap:20px; align-items:start }
+.formpanel { position:sticky; top:76px }
+.formpanel h2 { margin-bottom:14px }
+.actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px }
+.toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px }
+.search { position:relative; flex:1; min-width:220px }
+.search input { padding-right:36px }
+.search kbd { position:absolute; right:8px; top:50%; transform:translateY(-50%); pointer-events:none }
+.shown { color:var(--ink-3); font-size:12.5px; margin-left:auto }
+.tablewrap { overflow-x:auto }
+table { width:100%; border-collapse:collapse }
+thead th { text-align:left; font-weight:500; font-size:11px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3);
+  border-bottom:1px solid var(--line); padding:11px 12px; white-space:nowrap }
+tbody tr { border-bottom:1px solid var(--line) }
+tbody tr:last-child { border-bottom:0 }
+tbody tr:hover { background:var(--surface-2) }
+tbody tr.flash { box-shadow:inset 3px 0 0 var(--warn); background:rgba(211,162,92,.08) }
+tbody tr.editing { box-shadow:inset 3px 0 0 var(--accent); background:var(--accent-soft) }
+td { padding:9px 12px; vertical-align:middle; font-size:13.5px }
+.c-brand b { font-weight:600; display:block }
+.c-brand small { display:block; color:var(--ink-3); font-size:11.5px }
+.c-phone { font-variant-numeric:tabular-nums; white-space:nowrap }
+.c-when { color:var(--ink-3); font-size:12.5px; white-space:nowrap }
+td.c-type { color:var(--ink-2); font-size:12.5px; white-space:nowrap }
+td.c-type small { display:block; color:var(--ink-3); font-size:11.5px }
+.c-act { text-align:right; white-space:nowrap }
+.c-act .btn + .btn { margin-left:4px }
+mark { background:rgba(109,141,255,.28); color:inherit; padding:0 1px }
+
+/* Drafts view */
+.drafts { display:grid; grid-template-columns:minmax(0,1fr) 440px; gap:20px; align-items:start; margin-top:22px }
+.dlist { display:grid; gap:8px }
+.dcard { background:var(--surface); border:1px solid var(--line); padding:14px 16px }
+.dcard.editing { border-color:var(--accent-line); background:var(--accent-soft) }
+.dcard h3 { margin:0; font-size:14px; font-weight:600 }
+.dcard .subj { color:var(--ink-3); font-size:12px; margin:2px 0 0 }
+.dcols { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:10px 0 12px }
+.dcol h4 { margin:0 0 4px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-3); font-weight:500 }
+.dcol .subj { margin:0 0 4px }
+.dcol p.body { color:var(--ink-2); font-size:13px; margin:0; white-space:pre-wrap;
+  display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden }
+.dcol p.none { color:var(--ink-3); font-size:12.5px; font-style:italic; margin:0 }
+.group { border-top:1px solid var(--line); margin:18px 0 0; padding-top:14px }
+.group > .eyebrow { color:var(--ink-3) }
+.seg { display:inline-flex; border:1px solid var(--line-2) }
+.seg button { font:inherit; font-size:13px; background:var(--surface-2); color:var(--ink-2); border:0; padding:8px 16px; cursor:pointer }
+.seg button + button { border-left:1px solid var(--line-2) }
+.seg button:hover { color:var(--ink) }
+.seg button[aria-pressed="true"] { background:var(--accent-soft); color:var(--ink); box-shadow:inset 0 -2px 0 var(--accent) }
+.tokens { display:flex; flex-wrap:wrap; gap:5px; margin:6px 0 0 }
+.tokens button { font:12px var(--mono); background:var(--surface-3); color:var(--ink-2); border:1px solid var(--line-2); padding:3px 7px; cursor:pointer }
+.tokens button:hover { color:var(--ink); border-color:var(--accent-line) }
+.side { display:grid; gap:14px; position:sticky; top:76px }
+
+/* Sync view */
+.sync { display:grid; grid-template-columns:420px minmax(0,1fr); gap:20px; align-items:start; margin-top:22px }
+.steps { margin:0; padding-left:20px; color:var(--ink-2); font-size:13.5px }
+.steps li { margin-bottom:6px }
+.steps b { color:var(--ink); font-weight:600 }
+pre.code { margin:12px 0 0; max-height:420px; overflow:auto; background:#0a0c0f; border:1px solid var(--line);
+  padding:14px; font:12px/1.55 var(--mono); color:var(--ink-2) }
+.log { margin:12px 0 0; font-size:12.5px; color:var(--ink-3) }
+.log.ok { color:var(--good) } .log.error { color:var(--bad) }
+
+/* Composer dialog */
+dialog { width:min(620px, calc(100vw - 32px)); padding:0; background:var(--surface); color:var(--ink); border:1px solid var(--line-2) }
+dialog::backdrop { background:rgba(5,6,8,.72) }
+.dhead { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line) }
+.dbody { padding:16px 20px }
+.dfoot { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:14px 20px; border-top:1px solid var(--line) }
+.dfoot .spacer { flex:1 }
+.close { background:none; border:0; color:var(--ink-3); font-size:20px; line-height:1; cursor:pointer; padding:2px 4px }
+.close:hover { color:var(--ink) }
+#cBody { min-height:220px }
+
+.toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; background:var(--surface-3);
+  border:1px solid var(--line-2); color:var(--ink); padding:9px 14px; font-size:13px; box-shadow:0 10px 30px rgba(0,0,0,.4) }
+
+@media (max-width:1060px) {
+  .work, .drafts, .sync { grid-template-columns:minmax(0,1fr) }
+  .formpanel, .side { position:static }
+}
+@media (max-width:720px) {
+  .bar { gap:10px; padding:0 12px }
+  .mark, .syncpill span { display:none }
+  .nav { margin-left:0; min-width:0; overflow-x:auto; scrollbar-width:none }
+  .nav a { padding:6px 8px; font-size:13px }
+  .page { padding:22px 16px 70px }
+  h1 { font-size:21px }
+  .row2, .dcols { grid-template-columns:1fr }
+  .c-when, .c-type { display:none }
+}
+</style>
+</head>
+<body>
+<canvas id="particles" aria-hidden="true"></canvas>
+
+<header class="bar">
+  <div class="mark">CSI Finance <span>outreach</span></div>
+  <nav class="nav">
+    <a href="#brands" data-view="brands">Brands</a>
+    <a href="#drafts" data-view="drafts">Draft messages</a>
+    <a href="#sync" data-view="sync">Sheet sync</a>
+  </nav>
+  <a class="syncpill" id="syncPill" href="#sync" title="Google Sheet sync status"><span id="syncText">This browser only</span></a>
+</header>
+
+<main class="page">
+
+  <!-- ─────────────── Brands ─────────────── -->
+  <section id="view-brands">
+    <div class="head">
+      <div>
+        <h1>Brand outreach</h1>
+        <p class="lede">Every brand the finance team is talking to, where each conversation stands, and the message to send next.</p>
+      </div>
+      <button class="btn" type="button" id="exportCsv">Export CSV</button>
+    </div>
+
+    <div class="stats" id="stats" role="group" aria-label="Filter by status"></div>
+
+    <div class="work">
+      <aside class="panel pad formpanel">
+        <p class="eyebrow" id="formEyebrow">New brand</p>
+        <h2 id="formTitle">Add a brand</h2>
+        <form id="brandForm" novalidate>
+          <div id="dupAlert"></div>
+          <div class="field" id="f-brand"><label for="brand">Brand name</label>
+            <input id="brand" type="text" autocomplete="off" required>
+            <div class="helper" data-hint="Checked against every saved brand as you type"></div></div>
+          <div class="field" id="f-type"><span class="label" id="typeLabel">Brand type</span><div id="typeMount"></div>
+            <div class="helper" data-hint=""></div></div>
+          <div class="field" id="f-contact"><label for="contact">Contact person <span class="opt">optional</span></label>
+            <input id="contact" type="text" autocomplete="off">
+            <div class="helper" data-hint=""></div></div>
+          <div class="row2">
+            <div class="field" id="f-phone"><label for="phone">Number</label>
+              <input id="phone" type="tel" inputmode="numeric" autocomplete="off" placeholder="98765 43210" required>
+              <div class="helper" data-hint="10 digits, +91 is fine"></div></div>
+            <div class="field" id="f-email"><label for="email">Email <span class="opt">optional</span></label>
+              <input id="email" type="email" autocomplete="off">
+              <div class="helper" data-hint=""></div></div>
+          </div>
+          <div class="field"><span class="label" id="statusLabel">Status</span><div id="statusMount"></div></div>
+          <div class="field" id="f-by"><label for="addedBy">Added by</label>
+            <input id="addedBy" type="text" list="teamNames" autocomplete="off" placeholder="Your name">
+            <datalist id="teamNames"></datalist>
+            <div class="helper" data-hint="Remembered for next time"></div></div>
+          <div class="field" id="f-notes"><label for="notes">Notes <span class="opt">optional</span></label>
+            <textarea id="notes" rows="3" placeholder="Budget, who referred them, what they asked for…"></textarea>
+            <div class="helper" data-hint=""></div></div>
+          <div class="actions">
+            <button class="btn primary" type="submit" id="saveBtn">Save brand</button>
+            <button class="btn ghost" type="button" id="cancelEdit" hidden>Cancel</button>
+          </div>
+        </form>
+      </aside>
+
+      <div>
+        <div class="toolbar">
+          <div class="search">
+            <input id="q" type="search" placeholder="Search a brand, contact or number…" autocomplete="off" spellcheck="false" aria-label="Search brands and numbers">
+            <kbd>/</kbd>
+          </div>
+          <div id="typeFilterMount"></div>
+          <div id="byFilterMount"></div>
+          <span class="shown" id="shown"></span>
+        </div>
+        <div class="panel tablewrap">
+          <table>
+            <thead><tr><th>Brand</th><th class="c-type">Type</th><th>Number</th><th>Status</th><th class="c-when">Updated</th><th><span hidden>Actions</span></th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <p class="empty" id="noRows" hidden></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── Drafts ─────────────── -->
+  <section id="view-drafts" hidden>
+    <h1>Draft messages</h1>
+    <p class="lede">Saved messages for brands. Placeholders like <code>{brand}</code> fill in automatically when you send one from the brand list.</p>
+    <div class="drafts">
+      <div class="dlist" id="dlist"></div>
+      <div class="side">
+        <div class="panel pad">
+          <p class="eyebrow" id="dEyebrow">New draft</p>
+          <h2 id="dTitle" style="margin-bottom:14px">Write a draft</h2>
+          <form id="draftForm" novalidate>
+            <div class="field" id="f-dtitle"><label for="dname">Name</label>
+              <input id="dname" type="text" placeholder="First pitch" required>
+              <div class="helper" data-hint="Only your team sees this"></div></div>
+            <div class="field" style="margin-bottom:0"><span class="label">Placeholders</span>
+              <div class="tokens" id="tokens"></div>
+              <div class="helper" data-hint="Click one to insert it into the message box you last clicked"></div></div>
+            <div class="group">
+              <p class="eyebrow">WhatsApp</p>
+              <div class="field" id="f-dwa"><label for="dwa">WhatsApp message</label>
+                <textarea id="dwa" rows="6" placeholder="Short and friendly. *Bold* and _italics_ work in WhatsApp."></textarea>
+                <div class="helper" data-hint=""></div></div>
+            </div>
+            <div class="group">
+              <p class="eyebrow">Email</p>
+              <div class="field"><label for="dsubject">Subject <span class="opt">optional</span></label>
+                <input id="dsubject" type="text" placeholder="Partnering with {org} for {event}"></div>
+              <div class="field" id="f-dbody"><label for="dbody">Email message</label>
+                <textarea id="dbody" rows="8"></textarea>
+                <div class="helper" data-hint="Fill in either message, or both"></div></div>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit" id="dSave">Save draft</button>
+              <button class="btn ghost" type="button" id="dCancel" hidden>Cancel</button>
+            </div>
+          </form>
+        </div>
+        <div class="panel pad">
+          <h2>Your details</h2>
+          <p class="hint">Fill the <code>{sender}</code>, <code>{event}</code> and <code>{org}</code> placeholders. Saved in this browser only, so each teammate signs as themselves.</p>
+          <div style="margin-top:14px">
+            <div class="field"><label for="sSender">Your name</label><input id="sSender" type="text"></div>
+            <div class="row2">
+              <div class="field"><label for="sEvent">Event</label><input id="sEvent" type="text"></div>
+              <div class="field"><label for="sOrg">Organisation</label><input id="sOrg" type="text"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────────── Sheet sync ─────────────── -->
+  <section id="view-sync" hidden>
+    <h1>Google Sheet sync</h1>
+    <p class="lede">Connect a Google Sheet so the whole finance team shares one list. Until you connect, everything is saved in this browser only.</p>
+    <div class="sync">
+      <div class="panel pad">
+        <p class="eyebrow">Connection</p>
+        <h2 style="margin-bottom:14px">Web app details</h2>
+        <form id="syncForm" novalidate>
+          <div class="field" id="f-url"><label for="sUrl">Web app URL</label>
+            <input id="sUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+            <div class="helper" data-hint="From Deploy → New deployment, ends in /exec"></div></div>
+          <div class="field" id="f-token"><label for="sToken">Team token</label>
+            <input id="sToken" type="password" autocomplete="off">
+            <div class="helper" data-hint="The TOKEN value you set in the script"></div></div>
+          <div class="actions">
+            <button class="btn primary" type="submit">Connect and sync</button>
+            <button class="btn" type="button" id="syncNow">Sync now</button>
+            <button class="btn ghost danger" type="button" id="disconnect">Disconnect</button>
+          </div>
+          <p class="log" id="syncLog"></p>
+        </form>
+      </div>
+      <div class="panel pad">
+        <p class="eyebrow">What this is</p>
+        <h2 style="margin-bottom:8px">How the sheet connection works</h2>
+        <p class="hint" style="font-size:13.5px;color:var(--ink-2);margin:0 0 8px">The dashboard can't open your Google Sheet by itself. So you add a small script to the sheet, and Google gives that script a web address, the <b>web app URL</b>. The dashboard sends new and changed brands to that address, and the script writes them into the sheet. It works the other way too: the dashboard asks the address for the latest rows, and the script reads them out of the sheet.</p>
+        <p class="hint" style="font-size:13.5px;color:var(--ink-2);margin:0 0 20px">The script edits the sheet as the person who set it up, so teammates don't need edit access to the sheet itself. Anyone who has the address could send it data, so it only accepts requests that include the <b>team token</b>, a password you choose. Keep both within the finance team.</p>
+        <p class="eyebrow">One-time setup</p>
+        <h2 style="margin-bottom:10px">Link a sheet in five steps</h2>
+        <ol class="steps">
+          <li>Create a Google Sheet for the team, then open <b>Extensions → Apps Script</b>.</li>
+          <li>Replace <code>Code.gs</code> with the script below and change <code>TOKEN</code> to a long random phrase.</li>
+          <li><b>Deploy → New deployment → Web app.</b> Execute as <b>Me</b>, access <b>Anyone</b>. Authorise it.</li>
+          <li>Copy the Web app URL and paste it, with the token, into the form on the left.</li>
+          <li>Share the URL and token with the finance team only. The sheet gets <b>Brands</b> and <b>Drafts</b> tabs.</li>
+        </ol>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px">
+          <span class="hint" style="margin:0">apps-script.gs</span>
+          <button class="btn sm" type="button" id="copyScript">Copy script</button>
+        </div>
+        <pre class="code" id="scriptCode">Loading…</pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ─────────────── Composer ─────────────── -->
+<dialog id="composer" aria-labelledby="cTitle">
+  <div class="dhead">
+    <div><p class="eyebrow">Message</p><h2 id="cTitle"></h2><p class="hint" id="cMeta"></p></div>
+    <button class="close" type="button" id="cClose" aria-label="Close">×</button>
+  </div>
+  <div class="dbody">
+    <div class="row2">
+      <div class="field"><span class="label">Draft</span><div id="cDraftMount"></div></div>
+      <div class="field"><span class="label" id="chanLabel">Send by</span>
+        <div class="seg" role="group" aria-labelledby="chanLabel">
+          <button type="button" data-ch="whatsapp" aria-pressed="true">WhatsApp</button>
+          <button type="button" data-ch="email" aria-pressed="false">Email</button>
+        </div></div>
+    </div>
+    <div class="field" id="cSubjectWrap"><label for="cSubject">Subject</label><input id="cSubject" type="text"></div>
+    <div class="field" style="margin-bottom:0"><label for="cBody">Message <span class="opt">edit before sending if you like</span></label>
+      <textarea id="cBody"></textarea>
+      <div class="helper" id="cNote"></div></div>
+  </div>
+  <div class="dfoot">
+    <button class="btn primary" type="button" id="cWhatsapp">Open in WhatsApp</button>
+    <button class="btn" type="button" id="cEmail">Open in email</button>
+    <button class="btn" type="button" id="cCopy">Copy</button>
+    <span class="spacer"></span>
+    <button class="btn ghost" type="button" id="cMark" hidden>Mark as messaged</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const now = () => new Date().toISOString();
+
+// The STATUS column of the team's "CSI Sponsors list" sheet, tidied up. A blank
+// cell there is "Not contacted" here; "Confirmed" is the one addition, for
+// brands that have said yes.
+const STATUSES = [
+  { value: "Not contacted", tone: "var(--ink-3)" },
+  { value: "Didn't pick up", tone: "var(--warn)" },
+  { value: "Messaged", tone: "var(--accent)" },
+  { value: "Follow-up", tone: "var(--score)" },
+  { value: "Interested", tone: "var(--good)" },
+  { value: "Keep for later", tone: "#b494ff" },
+  { value: "Confirmed", tone: "var(--good)", solid: true },
+  { value: "Rejected", tone: "var(--bad)" },
+  { value: "Invalid number", tone: "var(--ink-2)" },
+];
+// The sheet's own spellings, and this dashboard's older status names.
+const STATUS_ALIASES = {
+  "": "Not contacted", notcontacted: "Not contacted",
+  didntpickup: "Didn't pick up", didnotpickup: "Didn't pick up", notpicked: "Didn't pick up", nopickup: "Didn't pick up",
+  msged: "Messaged", msgd: "Messaged", messaged: "Messaged", contacted: "Messaged", mailed: "Messaged", emailed: "Messaged",
+  followup: "Follow-up", followupdue: "Follow-up",
+  interested: "Interested", negotiating: "Interested",
+  keepforlater: "Keep for later", later: "Keep for later",
+  confirmed: "Confirmed",
+  rejected: "Rejected", declined: "Rejected",
+  invalidnumber: "Invalid number", wrongnumber: "Invalid number",
+};
+// Categories from the tabs of the team's "CSI Sponsors list" sheet, with
+// clothing, gifting and accessories split out of its "miscellaneous" tab.
+const BRAND_TYPES = ["Food & beverage", "Food stall", "Gifting", "Clothing", "Accessories & jewellery",
+  "Coupons & experiences", "Bank & finance", "Education", "Entertainment", "Hospitality & travel", "Other"]
+  .map((value) => ({ value, tone: "var(--ink-2)", plain: true }));
+function statusOf(v) {
+  const exact = STATUSES.find((s) => s.value === v);
+  if (exact) return exact;
+  const alias = STATUS_ALIASES[String(v || "").toLowerCase().replace(/[^a-z]/g, "")];
+  return STATUSES.find((s) => s.value === alias) || STATUSES[0];
+}
+
+// ───────── Store: localStorage cache, Google Sheet as the shared copy ─────────
+const KEY = "finance-outreach.v1";
+const DEFAULT_DRAFTS = [
+  { id: "d-pitch", title: "First pitch", subject: "Partnering with {org} for {event}",
+    body: "Hi {contact},\n\nI'm {sender} from the finance team at {org}. We're organising {event} and think {brand} would be a great fit as a sponsor.\n\nWe reach a large, engaged student audience across the college, and we'd love to share our sponsorship deck and the options available.\n\nWould you have 15 minutes this week for a quick call?\n\nThanks,\n{sender}\n{org}" },
+  { id: "d-follow", title: "Follow-up", subject: "Following up: {event} x {brand}",
+    body: "Hi {contact},\n\nJust following up on my earlier message about {brand} partnering with {org} for {event}. Happy to send over the deck or work around a budget that suits you.\n\nLet me know a good time to talk.\n\nBest,\n{sender}" },
+  { id: "d-thanks", title: "Thank you (confirmed)", subject: "Thank you for supporting {event}",
+    body: "Hi {contact},\n\nThank you for confirming {brand}'s support for {event}! I'll share the next steps and the deliverables timeline shortly.\n\nLooking forward to working together.\n\nWarm regards,\n{sender}\n{org}" },
+];
+const DEFAULT_WHATSAPP = {
+  "d-pitch": "Hi {contact}! I'm {sender} from {org}. We're hosting *{event}* and would love to have {brand} on board as a sponsor. Could I share our sponsorship deck with you? 🙂",
+  "d-follow": "Hi {contact}, just following up on {brand} x *{event}*. Happy to send the deck or hop on a quick call whenever suits you. Thanks! – {sender}, {org}",
+  "d-thanks": "Hi {contact}, thank you so much for confirming {brand}'s support for *{event}*! 🎉 I'll share the next steps shortly. – {sender}",
+};
+DEFAULT_DRAFTS.forEach((d) => (d.whatsapp = DEFAULT_WHATSAPP[d.id]));
+const DEFAULTS = { brands: [], drafts: DEFAULT_DRAFTS, queue: [], settings: { url: "", token: "", me: "", sender: "", event: "", org: "CSI-KJSCE", lastSync: "" } };
+
+function load() {
+  try {
+    const d = JSON.parse(localStorage.getItem(KEY));
+    if (d) return { ...DEFAULTS, ...d, settings: { ...DEFAULTS.settings, ...d.settings } };
+  } catch {}
+  return structuredClone(DEFAULTS);
+}
+let db = load();
+db.brands.forEach((b) => (b.status = statusOf(b.status).value));
+// Starter drafts saved before WhatsApp versions existed get theirs now.
+db.drafts.forEach((d) => { if (d.whatsapp === undefined && DEFAULT_WHATSAPP[d.id]) d.whatsapp = DEFAULT_WHATSAPP[d.id]; });
+function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {} }
+
+// ───────── Helpers ─────────
+function normPhone(s) {
+  let d = String(s || "").replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("91")) d = d.slice(2);
+  else if (d.length === 11 && d.startsWith("0")) d = d.slice(1);
+  return d;
+}
+const fmtPhone = (d) => (d && d.length === 10 ? d.slice(0, 5) + " " + d.slice(5) : d || "");
+// "Nike India Pvt. Ltd." and "nike india" are the same brand.
+function normBrand(s) {
+  const raw = String(s || "").toLowerCase().replace(/&/g, "and");
+  const n = raw.replace(/\b(the|pvt|private|ltd|limited|llp|inc|co|company|corp|corporation)\b\.?/g, "").replace(/[^a-z0-9]/g, "");
+  return n || raw.replace(/[^a-z0-9]/g, "");
+}
+function when(iso) {
+  if (!iso) return "";
+  const d = new Date(iso); if (isNaN(d)) return "";
+  const t = new Date(), y = new Date(t); y.setDate(t.getDate() - 1);
+  if (d.toDateString() === t.toDateString()) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === y.toDateString()) return "Yesterday";
+  return d.toLocaleDateString([], { day: "numeric", month: "short", ...(d.getFullYear() !== t.getFullYear() && { year: "numeric" }) });
+}
+let toastT;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2200); }
+const chipHTML = (o) => `<span class="chip${o.solid ? " solid" : ""}${o.plain ? " plain" : ""}" style="--tone:${o.tone}">${esc(o.label ?? o.value)}</span>`;
+function highlight(text, q) {
+  const s = esc(text);
+  if (!q) return s;
+  const i = String(text).toLowerCase().indexOf(q);
+  if (i < 0) return s;
+  return esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length));
+}
+function setError(fieldId, msg) {
+  const f = $(fieldId), h = f.querySelector(".helper");
+  f.classList.toggle("error", !!msg);
+  if (h) h.textContent = msg || h.dataset.hint || "";
+}
+document.querySelectorAll(".helper").forEach((h) => (h.textContent = h.dataset.hint || ""));
+
+// ───────── Chip dropdown ─────────
+let closeOpen = null, openBtn = null, placeOpen = null;
+function chipSelect({ options, value, onChange, compact, label, labelledBy, placeholder, prefix, className }) {
+  const wrap = document.createElement("div");
+  wrap.className = "cs" + (compact ? " compact" : "") + (className ? " " + className : "");
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.setAttribute("aria-haspopup", "listbox");
+  btn.setAttribute("aria-expanded", "false");
+  if (label) btn.setAttribute("aria-label", label);
+  if (labelledBy) btn.setAttribute("aria-labelledby", labelledBy);
+  wrap.append(btn);
+  let opts = options, cur = value ?? (placeholder ? "" : options[0]?.value);
+  const render = () => {
+    const o = opts.find((x) => x.value === cur) || (placeholder ? null : opts[0]);
+    btn.innerHTML = (prefix ? `<span class="pre">${esc(prefix)}</span>` : "")
+      + (o ? chipHTML(o) : placeholder ? `<span class="ph">${esc(placeholder)}</span>` : "")
+      + '<span class="caret" aria-hidden="true"></span>';
+  };
+  render();
+
+  function open() {
+    if (closeOpen) closeOpen(false);
+    const pop = document.createElement("ul");
+    pop.className = "cs-pop"; pop.setAttribute("role", "listbox"); pop.tabIndex = -1;
+    let i = Math.max(0, opts.findIndex((o) => o.value === cur));
+    opts.forEach((o, k) => {
+      const li = document.createElement("li");
+      li.id = "cs-opt-" + k; li.setAttribute("role", "option"); li.setAttribute("aria-selected", String(o.value === cur));
+      li.innerHTML = chipHTML(o);
+      li.addEventListener("click", () => pick(o.value));
+      li.addEventListener("mousemove", () => { i = k; hl(); });
+      pop.append(li);
+    });
+    (btn.closest("dialog") || document.body).append(pop);
+    place();
+    btn.setAttribute("aria-expanded", "true");
+    hl(); pop.focus();
+
+    // Keep the list attached to its button; returns false once the button is off screen.
+    function place() {
+      const r = btn.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > innerHeight) return false;
+      pop.style.minWidth = Math.max(r.width, 170) + "px";
+      pop.style.left = Math.max(8, Math.min(r.left, innerWidth - pop.offsetWidth - 8)) + "px";
+      const h = pop.offsetHeight;
+      pop.style.top = (innerHeight - r.bottom < h + 8 && r.top > h + 8 ? r.top - h - 4 : r.bottom + 4) + "px";
+      return true;
+    }
+    function hl() {
+      [...pop.children].forEach((li, k) => li.classList.toggle("active", k === i));
+      pop.setAttribute("aria-activedescendant", "cs-opt-" + i);
+      pop.children[i]?.scrollIntoView({ block: "nearest" });
+    }
+    function pick(v) {
+      const changed = v !== cur; cur = v; render(); close(true);
+      if (changed) onChange?.(v);
+    }
+    function close(focus) {
+      pop.remove(); btn.setAttribute("aria-expanded", "false"); closeOpen = placeOpen = null;
+      if (focus) btn.focus();
+    }
+    pop.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown") { e.preventDefault(); i = (i + 1) % opts.length; hl(); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); i = (i - 1 + opts.length) % opts.length; hl(); }
+      else if (e.key === "Home") { e.preventDefault(); i = 0; hl(); }
+      else if (e.key === "End") { e.preventDefault(); i = opts.length - 1; hl(); }
+      else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(opts[i].value); }
+      else if (e.key === "Escape" || e.key === "Tab") { e.preventDefault(); e.stopPropagation(); close(true); }
+    });
+    closeOpen = close; openBtn = btn; placeOpen = place;
+    wrap._pop = pop;
+  }
+  btn.addEventListener("click", () => (btn.getAttribute("aria-expanded") === "true" ? closeOpen?.(true) : open()));
+  btn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); open(); } });
+  wrap.get = () => cur;
+  wrap.set = (v) => { cur = v; render(); };
+  wrap.setOptions = (o, v) => { opts = o; cur = v ?? (placeholder ? "" : o[0]?.value); render(); };
+  return wrap;
+}
+document.addEventListener("mousedown", (e) => {
+  if (closeOpen && !e.target.closest(".cs-pop") && !e.target.closest(".cs > button")) closeOpen(false);
+});
+addEventListener("resize", () => closeOpen?.(false));
+// When the page (or a box holding the button) scrolls, move the list with its
+// button, closing it only once the button leaves the screen. Scrolls of the
+// list itself or of an unrelated input's text are ignored.
+addEventListener("scroll", (e) => {
+  if (closeOpen && (e.target === document || (e.target instanceof Element && e.target.contains(openBtn))) && !placeOpen()) closeOpen(false);
+}, true);
+
+// ───────── Sync with Google Sheet ─────────
+let syncing = false;
+function setSync(state, text, detail = text) {
+  const p = $("syncPill");
+  p.className = "syncpill " + state;
+  $("syncText").textContent = text;
+  const log = $("syncLog");
+  log.className = "log " + (state === "error" ? "error" : state === "ok" ? "ok" : "");
+  log.textContent = state === "local" ? "Not connected. Everything is saved in this browser only." : detail;
+}
+function refreshPill() {
+  const s = db.settings;
+  if (!s.url) return setSync("local", "This browser only");
+  if (db.queue.length) return setSync("error", `${db.queue.length} change${db.queue.length === 1 ? "" : "s"} not synced`);
+  setSync("ok", s.lastSync ? "Synced " + when(s.lastSync) : "Connected");
+}
+async function call(body) {
+  // text/plain keeps this a "simple" request, which Apps Script accepts without a CORS preflight.
+  const r = await fetch(db.settings.url, { method: "POST", body: JSON.stringify({ ...body, token: db.settings.token }) });
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error || "The sheet refused the change");
+  return j;
+}
+function enqueue(op) {
+  if (!db.settings.url) return;
+  if (op.action === "saveDrafts") db.queue = db.queue.filter((q) => q.action !== "saveDrafts");
+  if (op.action === "upsertBrand") db.queue = db.queue.filter((q) => !(q.action === "upsertBrand" && q.row.id === op.row.id));
+  db.queue.push(op); save(); flush();
+}
+async function flush() {
+  if (!db.settings.url || syncing) return !db.queue.length;
+  syncing = true; setSync("busy", "Syncing…");
+  try {
+    while (db.queue.length) { await call(db.queue[0]); db.queue.shift(); save(); }
+    db.settings.lastSync = now(); save(); refreshPill();
+    return true;
+  } catch (err) {
+    setSync("error", "Sync failed", `Sync failed: ${err.message === "Failed to fetch" ? "couldn't reach the sheet" : err.message}. ${db.queue.length} change${db.queue.length === 1 ? "" : "s"} waiting; they'll go up on the next sync.`);
+    return false;
+  } finally { syncing = false; }
+}
+async function syncNow({ quiet } = {}) {
+  if (!db.settings.url) { refreshPill(); return false; }
+  if (!(await flush())) return false;
+  syncing = true; if (!quiet) setSync("busy", "Syncing…");
+  try {
+    const u = new URL(db.settings.url); u.searchParams.set("token", db.settings.token);
+    const j = await (await fetch(u)).json();
+    if (!j.ok) throw new Error(j.error || "The sheet refused the request");
+    db.brands = (j.brands || []).map((b) => ({ ...b, phone: normPhone(b.phone), status: statusOf(b.status).value }));
+    if (j.drafts && j.drafts.length) db.drafts = j.drafts;
+    else if (db.drafts.length) db.queue.push({ action: "saveDrafts", drafts: db.drafts });
+    db.settings.lastSync = now(); save();
+    syncing = false;
+    if (db.queue.length) await flush();
+    renderAll(); refreshPill();
+    return true;
+  } catch (err) {
+    setSync("error", "Sync failed", "Sync failed: " + (err.message === "Failed to fetch" ? "couldn't reach the sheet. Check the URL and that access is set to Anyone." : err.message));
+    return false;
+  } finally { syncing = false; }
+}
+
+// ───────── Brands ─────────
+let filter = "", typeFilter = "", byFilter = "", query = "", editingId = null, phoneConfirmed = false;
+const statusSel = chipSelect({ options: STATUSES, value: "Not contacted", labelledBy: "statusLabel" });
+$("statusMount").append(statusSel);
+const typeSel = chipSelect({ options: BRAND_TYPES, placeholder: "Select...", labelledBy: "typeLabel", onChange: () => setError("f-type", "") });
+$("typeMount").append(typeSel);
+$("addedBy").addEventListener("input", () => setError("f-by", ""));
+
+// Who added what: names as typed, matched case-insensitively ("ronak" = "Ronak").
+const nameKey = (s) => String(s || "").trim().toLowerCase();
+const nameShow = (s) => { const t = String(s || "").trim(); return t.charAt(0).toUpperCase() + t.slice(1); };
+function teamNames() {
+  const m = new Map();
+  [db.settings.me, ...db.brands.map((b) => b.addedBy)].forEach((n) => { if (nameKey(n) && !m.has(nameKey(n))) m.set(nameKey(n), nameShow(n)); });
+  return [...m.values()].sort((a, b) => a.localeCompare(b));
+}
+const ALL = { tone: "var(--ink-2)", plain: true };
+const typeFilterSel = chipSelect({ options: [{ value: "", label: "All types", ...ALL }, ...BRAND_TYPES], className: "filter", prefix: "Type", label: "Filter by brand type",
+  onChange: (v) => { typeFilter = v; renderRows(); } });
+const byFilterSel = chipSelect({ options: [], className: "filter", prefix: "Added by", label: "Filter by who added the brand",
+  onChange: (v) => { byFilter = v; renderRows(); } });
+$("typeFilterMount").append(typeFilterSel); $("byFilterMount").append(byFilterSel);
+function renderFilters() {
+  const names = teamNames();
+  if (byFilter && !names.some((n) => nameKey(n) === byFilter)) byFilter = "";
+  byFilterSel.setOptions([{ value: "", label: "Everyone", ...ALL }, ...names.map((n) => ({ value: nameKey(n), label: n, tone: "var(--accent)", plain: true }))], byFilter);
+  $("teamNames").innerHTML = names.map((n) => `<option value="${esc(n)}">`).join("");
+}
+
+function findDuplicates(brand, phone, exceptId) {
+  const nb = normBrand(brand), np = normPhone(phone);
+  return {
+    brand: nb ? db.brands.find((b) => b.id !== exceptId && normBrand(b.brand) === nb) : null,
+    phone: np.length >= 8 ? db.brands.find((b) => b.id !== exceptId && normPhone(b.phone) === np) : null,
+  };
+}
+function showDupes() {
+  const d = findDuplicates($("brand").value, $("phone").value, editingId);
+  const box = $("dupAlert");
+  let html = "";
+  if (d.brand) {
+    html += `<div class="alert bad" role="alert"><b>${esc(d.brand.brand)} is already on the list</b>${d.brand.addedBy ? `, added by ${esc(nameShow(d.brand.addedBy))}` : ""}, marked ${esc(d.brand.status)} and last updated ${esc(when(d.brand.updatedAt))}.
+      <div><button type="button" class="btn sm" data-open="${esc(d.brand.id)}">Open that brand instead</button></div></div>`;
+  }
+  if (d.phone && (!d.brand || d.phone.id !== d.brand.id)) {
+    html += `<div class="alert" role="alert"><b>This number is already saved</b> for ${esc(d.phone.brand)}. If it's the same agency handling both brands, you can save anyway.</div>`;
+  }
+  box.innerHTML = html;
+  box.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => startEdit(b.dataset.open, true)));
+  return d;
+}
+["brand", "phone"].forEach((id) => $(id).addEventListener("input", () => {
+  phoneConfirmed = false; $("saveBtn").textContent = editingId ? "Save changes" : "Save brand";
+  setError("f-" + id, ""); showDupes();
+}));
+
+function resetForm() {
+  editingId = null; phoneConfirmed = false;
+  $("brandForm").reset(); statusSel.set("Not contacted"); typeSel.set("");
+  $("addedBy").value = db.settings.me || db.settings.sender || "";
+  ["f-brand", "f-phone", "f-email", "f-type", "f-by"].forEach((f) => setError(f, ""));
+  $("dupAlert").innerHTML = "";
+  $("formEyebrow").textContent = "New brand"; $("formTitle").textContent = "Add a brand";
+  $("saveBtn").textContent = "Save brand"; $("cancelEdit").hidden = true;
+  renderRows();
+}
+function startEdit(id, flash) {
+  const b = db.brands.find((x) => x.id === id); if (!b) return;
+  editingId = id; phoneConfirmed = false;
+  $("brand").value = b.brand; $("contact").value = b.contact || ""; $("phone").value = fmtPhone(b.phone);
+  $("email").value = b.email || ""; $("notes").value = b.notes || ""; statusSel.set(statusOf(b.status).value);
+  typeSel.set(b.type || ""); $("addedBy").value = b.addedBy || "";
+  ["f-brand", "f-phone", "f-email", "f-type", "f-by"].forEach((f) => setError(f, ""));
+  $("dupAlert").innerHTML = "";
+  $("formEyebrow").textContent = "Editing"; $("formTitle").textContent = b.brand;
+  $("saveBtn").textContent = "Save changes"; $("cancelEdit").hidden = false;
+  renderRows();
+  if (!document.querySelector(`tr[data-id="${CSS.escape(id)}"]`)) {
+    // Hidden by a filter: clear them all so the row being edited is on screen.
+    query = filter = typeFilter = byFilter = ""; $("q").value = ""; typeFilterSel.set(""); byFilterSel.set("");
+    renderStats(); renderRows();
+  }
+  const tr = document.querySelector(`tr[data-id="${CSS.escape(id)}"]`);
+  if (tr) { tr.scrollIntoView({ block: "nearest" }); if (flash) { tr.classList.add("flash"); setTimeout(() => tr.classList.remove("flash"), 1600); } }
+  $("brand").focus();
+}
+$("cancelEdit").addEventListener("click", resetForm);
+
+$("brandForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const brand = $("brand").value.trim(), phone = normPhone($("phone").value), email = $("email").value.trim();
+  let ok = true;
+  if (!brand) { setError("f-brand", "Enter the brand's name"); ok = false; }
+  if (phone.length !== 10) { setError("f-phone", phone ? "Enter 10 digits (a +91 or leading 0 is fine)" : "Enter a number"); ok = false; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("f-email", "That doesn't look like an email address"); ok = false; }
+  const type = typeSel.get(), addedBy = $("addedBy").value.trim();
+  if (!type) { setError("f-type", "Pick what kind of brand this is"); ok = false; }
+  if (!addedBy) { setError("f-by", "Add your name so the team knows who added it"); ok = false; }
+  const d = showDupes();
+  if (d.brand) { ok = false; $("dupAlert").querySelector(".alert")?.scrollIntoView({ block: "nearest" }); }
+  if (!ok) { (document.querySelector("#brandForm .error input, #brandForm .error .cs > button") || $("brand")).focus(); return; }
+  if (d.phone && !phoneConfirmed) { phoneConfirmed = true; $("saveBtn").textContent = "Save anyway"; return; }
+
+  const prev = db.brands.find((b) => b.id === editingId);
+  const row = {
+    id: editingId || uid(), brand, contact: $("contact").value.trim(), phone, email,
+    status: statusSel.get(), notes: $("notes").value.trim(),
+    createdAt: prev?.createdAt || now(), updatedAt: now(), type, addedBy,
+  };
+  if (!prev) { db.settings.me = addedBy; }
+  db.brands = [row, ...db.brands.filter((b) => b.id !== row.id)];
+  save(); enqueue({ action: "upsertBrand", row });
+  toast(prev ? `Saved changes to ${brand}` : `Added ${brand}`);
+  resetForm(); renderStats(); renderFilters();
+});
+
+function renderStats() {
+  const counts = Object.fromEntries(STATUSES.map((s) => [s.value, 0]));
+  db.brands.forEach((b) => (counts[statusOf(b.status).value] += 1));
+  const tiles = [{ value: "", label: "All brands", n: db.brands.length }, ...STATUSES.map((s) => ({ ...s, label: s.value, n: counts[s.value] }))];
+  $("stats").innerHTML = tiles.map((t) =>
+    `<button type="button" class="stat" data-f="${esc(t.value)}" aria-pressed="${filter === t.value}" ${t.tone ? `style="--tone:${t.tone}"` : ""}>
+       <b>${t.n}</b><span>${esc(t.label)}</span></button>`).join("");
+  $("stats").querySelectorAll(".stat").forEach((b) => b.addEventListener("click", () => {
+    filter = filter === b.dataset.f ? "" : b.dataset.f; renderStats(); renderRows();
+  }));
+}
+
+function renderRows() {
+  const q = query.trim().toLowerCase(), qd = q.replace(/\D/g, "");
+  const list = db.brands
+    .filter((b) => !filter || statusOf(b.status).value === filter)
+    .filter((b) => !typeFilter || b.type === typeFilter)
+    .filter((b) => !byFilter || nameKey(b.addedBy) === byFilter)
+    .filter((b) => !q || b.brand.toLowerCase().includes(q) || (b.contact || "").toLowerCase().includes(q)
+      || (b.email || "").toLowerCase().includes(q) || (qd.length >= 3 && normPhone(b.phone).includes(qd)))
+    .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  const tbody = $("rows"); tbody.innerHTML = "";
+  for (const b of list) {
+    const tr = document.createElement("tr");
+    tr.dataset.id = b.id;
+    if (b.id === editingId) tr.className = "editing";
+    tr.innerHTML = `
+      <td class="c-brand"><b>${highlight(b.brand, q)}</b>${b.contact || b.email ? `<small>${highlight([b.contact, b.email].filter(Boolean).join(" · "), q)}</small>` : ""}</td>
+      <td class="c-type">${esc(b.type || "–")}${b.addedBy ? `<small>by ${esc(nameShow(b.addedBy))}</small>` : ""}</td>
+      <td class="c-phone">${markPhone(b.phone, qd)}</td>
+      <td class="c-status"></td>
+      <td class="c-when" title="${esc(b.updatedAt ? new Date(b.updatedAt).toLocaleString() : "")}">${esc(when(b.updatedAt))}</td>
+      <td class="c-act"><button class="btn sm" type="button" data-a="msg">Message</button><button class="btn sm ghost" type="button" data-a="edit">Edit</button><button class="btn sm ghost danger" type="button" data-a="del" aria-label="Delete ${esc(b.brand)}">Delete</button></td>`;
+    tr.querySelector(".c-status").append(chipSelect({
+      options: STATUSES, value: statusOf(b.status).value, compact: true, label: `Status of ${b.brand}`,
+      onChange: (v) => setStatus(b.id, v),
+    }));
+    tr.querySelector('[data-a="msg"]').addEventListener("click", () => openComposer(b.id));
+    tr.querySelector('[data-a="edit"]').addEventListener("click", () => startEdit(b.id));
+    tr.querySelector('[data-a="del"]').addEventListener("click", () => removeBrand(b.id));
+    tbody.append(tr);
+  }
+  const none = $("noRows");
+  none.hidden = list.length > 0;
+  none.textContent = db.brands.length ? "No brands match. Try part of the name, or at least three digits of the number." : "No brands yet. Add the first one with the form on the left.";
+  $("shown").textContent = db.brands.length ? `${list.length} of ${db.brands.length}` : "";
+}
+// Highlight matched digits inside the spaced "98765 43210" form.
+function markPhone(d, qd) {
+  const f = fmtPhone(d), start = qd.length >= 3 ? d.indexOf(qd) : -1;
+  if (start < 0) return esc(f);
+  let out = "", k = 0;
+  for (const ch of f) {
+    if (/\d/.test(ch)) { out += k >= start && k < start + qd.length ? `<mark>${ch}</mark>` : ch; k++; }
+    else out += ch;
+  }
+  return out.replace(/<\/mark><mark>/g, "");
+}
+function setStatus(id, status) {
+  const b = db.brands.find((x) => x.id === id); if (!b) return;
+  b.status = status; b.updatedAt = now(); save();
+  enqueue({ action: "upsertBrand", row: b });
+  renderStats(); renderRows(); toast(`${b.brand}: ${status}`);
+}
+function removeBrand(id) {
+  const b = db.brands.find((x) => x.id === id); if (!b) return;
+  if (!confirm(`Delete ${b.brand}? This removes it from the shared sheet too.`)) return;
+  db.brands = db.brands.filter((x) => x.id !== id); save();
+  enqueue({ action: "deleteBrand", id });
+  if (editingId === id) resetForm();
+  renderStats(); renderRows(); toast(`Deleted ${b.brand}`);
+}
+$("q").addEventListener("input", (e) => { query = e.target.value; renderRows(); });
+addEventListener("keydown", (e) => {
+  if (e.key === "/" && !e.target.closest("input, textarea, select, [contenteditable]") && !$("composer").open) {
+    e.preventDefault(); location.hash = "#brands"; $("q").focus();
+  }
+});
+
+$("exportCsv").addEventListener("click", () => {
+  const cols = ["brand", "type", "contact", "phone", "email", "status", "notes", "addedBy", "createdAt", "updatedAt"];
+  const cell = (v) => { const s = String(v ?? ""); const safe = /^[=+\-@]/.test(s) ? "'" + s : s; return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe; };
+  const csv = [cols.join(","), ...db.brands.map((b) => cols.map((c) => cell(b[c])).join(","))].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = `brand-outreach-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
+// ───────── Drafts ─────────
+const TOKENS = ["{brand}", "{contact}", "{sender}", "{event}", "{org}"];
+let editingDraft = null, lastBox = "dwa";
+["dwa", "dsubject", "dbody"].forEach((id) => $(id).addEventListener("focus", () => (lastBox = id)));
+$("tokens").innerHTML = TOKENS.map((t) => `<button type="button" data-t="${t}">${t}</button>`).join("");
+$("tokens").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => {
+  const ta = $(lastBox); ta.focus();
+  ta.setRangeText(b.dataset.t, ta.selectionStart, ta.selectionEnd, "end");
+}));
+function fill(text, b) {
+  const s = db.settings;
+  const map = { brand: b?.brand, contact: b?.contact || "there", sender: s.sender || "[your name]", event: s.event || "[event]", org: s.org || "[organisation]" };
+  return String(text || "").replace(/\{(brand|contact|sender|event|org)\}/g, (_, k) => map[k] || "");
+}
+function renderDrafts() {
+  const box = $("dlist");
+  if (!db.drafts.length) { box.innerHTML = `<div class="panel"><p class="empty">No drafts yet. Write one on the right.</p></div>`; return; }
+  box.innerHTML = db.drafts.map((d) => `
+    <article class="dcard${d.id === editingDraft ? " editing" : ""}" data-id="${esc(d.id)}">
+      <h3>${esc(d.title)}</h3>
+      <div class="dcols">
+        <div class="dcol"><h4>WhatsApp</h4>${d.whatsapp ? `<p class="body">${esc(d.whatsapp)}</p>` : `<p class="none">No WhatsApp version. The email text is used instead.</p>`}</div>
+        <div class="dcol"><h4>Email</h4>${d.subject ? `<p class="subj">Subject: ${esc(d.subject)}</p>` : ""}${d.body ? `<p class="body">${esc(d.body)}</p>` : `<p class="none">No email version. The WhatsApp text is used instead.</p>`}</div>
+      </div>
+      <button class="btn sm" type="button" data-a="edit">Edit</button>
+      <button class="btn sm ghost danger" type="button" data-a="del">Delete</button>
+    </article>`).join("");
+  box.querySelectorAll(".dcard").forEach((c) => {
+    c.querySelector('[data-a="edit"]').addEventListener("click", () => editDraft(c.dataset.id));
+    c.querySelector('[data-a="del"]').addEventListener("click", () => {
+      const d = db.drafts.find((x) => x.id === c.dataset.id);
+      if (!confirm(`Delete the draft "${d.title}"?`)) return;
+      db.drafts = db.drafts.filter((x) => x.id !== d.id); save();
+      enqueue({ action: "saveDrafts", drafts: db.drafts });
+      if (editingDraft === d.id) resetDraft();
+      renderDrafts(); toast("Draft deleted");
+    });
+  });
+}
+function editDraft(id) {
+  const d = db.drafts.find((x) => x.id === id); if (!d) return;
+  editingDraft = id;
+  $("dname").value = d.title; $("dsubject").value = d.subject || ""; $("dbody").value = d.body || ""; $("dwa").value = d.whatsapp || "";
+  $("dEyebrow").textContent = "Editing"; $("dTitle").textContent = d.title;
+  $("dSave").textContent = "Save changes"; $("dCancel").hidden = false;
+  setError("f-dtitle", ""); setError("f-dbody", ""); setError("f-dwa", "");
+  renderDrafts(); $("dname").focus();
+}
+function resetDraft() {
+  editingDraft = null; $("draftForm").reset();
+  $("dEyebrow").textContent = "New draft"; $("dTitle").textContent = "Write a draft";
+  $("dSave").textContent = "Save draft"; $("dCancel").hidden = true;
+  setError("f-dtitle", ""); setError("f-dbody", ""); setError("f-dwa", "");
+  renderDrafts();
+}
+$("dCancel").addEventListener("click", resetDraft);
+$("draftForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const title = $("dname").value.trim(), body = $("dbody").value.trim(), whatsapp = $("dwa").value.trim();
+  setError("f-dtitle", title ? "" : "Give the draft a name");
+  setError("f-dwa", body || whatsapp ? "" : "Write a WhatsApp message, an email message, or both");
+  setError("f-dbody", "");
+  if (!title || !(body || whatsapp)) return;
+  const d = { id: editingDraft || uid(), title, subject: $("dsubject").value.trim(), body, whatsapp };
+  const i = db.drafts.findIndex((x) => x.id === d.id);
+  if (i >= 0) db.drafts[i] = d; else db.drafts.push(d);
+  save(); enqueue({ action: "saveDrafts", drafts: db.drafts });
+  toast(i >= 0 ? "Draft saved" : "Draft added"); resetDraft();
+});
+[["sSender", "sender"], ["sEvent", "event"], ["sOrg", "org"]].forEach(([id, k]) => {
+  $(id).value = db.settings[k] || "";
+  $(id).addEventListener("input", (e) => { db.settings[k] = e.target.value.trim(); save(); });
+});
+
+// ───────── Composer ─────────
+let composing = null, channel = "whatsapp", texts = {};
+const draftSel = chipSelect({ options: [], labelledBy: null, label: "Choose a draft", onChange: () => fillComposer() });
+$("cDraftMount").append(draftSel);
+function openComposer(id) {
+  const b = db.brands.find((x) => x.id === id); if (!b) return;
+  if (!db.drafts.length) { toast("Write a draft first"); location.hash = "#drafts"; return; }
+  composing = id;
+  $("cTitle").textContent = b.brand;
+  $("cMeta").textContent = [b.contact, fmtPhone(b.phone), b.email].filter(Boolean).join(" · ");
+  const pick = { "Not contacted": "d-pitch", "Didn't pick up": "d-pitch", "Messaged": "d-follow", "Follow-up": "d-follow", "Keep for later": "d-follow", "Confirmed": "d-thanks" }[statusOf(b.status).value];
+  const opts = db.drafts.map((d) => ({ value: d.id, label: d.title, tone: "var(--ink-2)", plain: true }));
+  draftSel.setOptions(opts, opts.find((o) => o.value === pick)?.value);
+  fillComposer();
+  setChannel("whatsapp");
+  $("cEmail").disabled = !b.email; $("cEmail").title = b.email ? "" : "No email saved for this brand";
+  $("cMark").hidden = true;
+  $("composer").showModal();
+}
+// Each channel keeps its own text, so edits survive switching back and forth.
+// A draft missing one version borrows the other's text.
+function fillComposer() {
+  const b = db.brands.find((x) => x.id === composing), d = db.drafts.find((x) => x.id === draftSel.get());
+  texts = { whatsapp: fill(d?.whatsapp || d?.body, b), email: fill(d?.body || d?.whatsapp, b) };
+  $("cSubject").value = fill(d?.subject, b);
+  showChannel();
+}
+function setChannel(ch) {
+  texts[channel] = $("cBody").value;
+  channel = ch;
+  showChannel();
+}
+function showChannel() {
+  const d = db.drafts.find((x) => x.id === draftSel.get()), wa = channel === "whatsapp";
+  document.querySelectorAll(".seg [data-ch]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.ch === channel)));
+  $("cBody").value = texts[channel] ?? "";
+  $("cSubjectWrap").hidden = wa;
+  $("cWhatsapp").hidden = !wa; $("cEmail").hidden = wa;
+  $("cNote").textContent = wa && d && !d.whatsapp ? "This draft has no WhatsApp version, so its email text is shown."
+    : !wa && d && !d.body ? "This draft has no email version, so its WhatsApp text is shown." : "";
+}
+document.querySelectorAll(".seg [data-ch]").forEach((x) => x.addEventListener("click", () => setChannel(x.dataset.ch)));
+function afterSend(how) {
+  const b = db.brands.find((x) => x.id === composing);
+  toast(how);
+  if (b && ["Not contacted", "Didn't pick up"].includes(statusOf(b.status).value)) $("cMark").hidden = false;
+}
+$("cWhatsapp").addEventListener("click", () => {
+  const b = db.brands.find((x) => x.id === composing);
+  open(`https://wa.me/91${normPhone(b.phone)}?text=${encodeURIComponent($("cBody").value)}`, "_blank", "noopener");
+  afterSend("Opened WhatsApp");
+});
+$("cEmail").addEventListener("click", () => {
+  const b = db.brands.find((x) => x.id === composing);
+  location.href = `mailto:${encodeURIComponent(b.email)}?subject=${encodeURIComponent($("cSubject").value)}&body=${encodeURIComponent($("cBody").value)}`;
+  afterSend("Opened your email app");
+});
+$("cCopy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("cBody").value); afterSend("Message copied"); }
+  catch { $("cBody").select(); toast("Press Ctrl/Cmd + C to copy"); }
+});
+$("cMark").addEventListener("click", () => { setStatus(composing, "Messaged"); $("cMark").hidden = true; });
+$("cClose").addEventListener("click", () => $("composer").close());
+$("composer").addEventListener("close", () => { closeOpen?.(false); composing = null; channel = "whatsapp"; texts = {}; });
+$("composer").addEventListener("click", (e) => { if (e.target === $("composer")) $("composer").close(); });
+
+// ───────── Sync view ─────────
+$("sUrl").value = db.settings.url; $("sToken").value = db.settings.token;
+$("syncForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const url = $("sUrl").value.trim(), token = $("sToken").value;
+  setError("f-url", /^https:\/\/script\.google(usercontent)?\.com\/.+/.test(url) ? "" : "Paste the Web app URL from Apps Script (starts with https://script.google.com/)");
+  setError("f-token", token ? "" : "Enter the token from the script");
+  if ($("f-url").classList.contains("error") || !token) return;
+  const hadLocal = !db.settings.url && db.brands.length;
+  db.settings.url = url; db.settings.token = token; save();
+  // First connection from a browser that already has brands: send them up
+  // before pulling, or the (empty) sheet would wipe them.
+  if (hadLocal) db.brands.forEach((row) => db.queue.push({ action: "upsertBrand", row }));
+  if (await syncNow()) toast("Connected to the sheet");
+});
+$("syncNow").addEventListener("click", () => syncNow());
+$("disconnect").addEventListener("click", () => {
+  if (!db.settings.url) return;
+  if (db.queue.length && !confirm(`${db.queue.length} change(s) haven't reached the sheet yet and will stay in this browser only. Disconnect anyway?`)) return;
+  db.settings.url = ""; db.settings.token = ""; db.queue = []; save();
+  $("sUrl").value = ""; $("sToken").value = ""; refreshPill(); toast("Disconnected");
+});
+fetch("apps-script.gs").then((r) => (r.ok ? r.text() : Promise.reject())).then((t) => ($("scriptCode").textContent = t))
+  .catch(() => ($("scriptCode").textContent = "Couldn't load apps-script.gs. Open it from the dashboard's folder instead."));
+$("copyScript").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText($("scriptCode").textContent); toast("Script copied"); } catch { toast("Select the script and copy it"); }
+});
+
+// ───────── Views ─────────
+function route() {
+  const v = ["brands", "drafts", "sync"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "brands";
+  ["brands", "drafts", "sync"].forEach((k) => ($("view-" + k).hidden = k !== v));
+  document.querySelectorAll(".nav a").forEach((a) => (a.dataset.view === v ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
+  closeOpen?.(false);
+}
+addEventListener("hashchange", route);
+function renderAll() { renderFilters(); renderStats(); renderRows(); renderDrafts(); }
+
+route(); resetForm(); renderAll(); refreshPill();
+if (db.settings.url) syncNow();
+// Pick up teammates' changes every minute while the tab is open.
+setInterval(() => { if (db.settings.url && !document.hidden && !$("composer").open && !closeOpen) syncNow({ quiet: true }); }, 60000);
+
+// ───────── Particle field (same as the form prototype) ─────────
+(function () {
+  const cv = $("particles"), ctx = cv.getContext("2d");
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const LINK = 140, PUSH = 110;
+  let w, h, pts = [], mouse = { x: -1e4, y: -1e4 }, raf;
+  function size() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    w = innerWidth; h = innerHeight;
+    cv.width = w * dpr; cv.height = h * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const n = Math.round(Math.min(170, (w * h) / 9000));
+    pts = Array.from({ length: n }, () => ({
+      x: Math.random() * w, y: Math.random() * h,
+      vx: (Math.random() - .5) * .25, vy: (Math.random() - .5) * .25,
+      r: Math.random() * 1.2 + .6, a: Math.random() * .35 + .5,
+    }));
+  }
+  function frame() {
+    ctx.clearRect(0, 0, w, h);
+    if (!still) for (const p of pts) {
+      const dx = p.x - mouse.x, dy = p.y - mouse.y, d = Math.hypot(dx, dy);
+      if (d < PUSH && d > 0) { const f = (1 - d / PUSH) * .6; p.x += dx / d * f; p.y += dy / d * f; }
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -10) p.x = w + 10; else if (p.x > w + 10) p.x = -10;
+      if (p.y < -10) p.y = h + 10; else if (p.y > h + 10) p.y = -10;
+    }
+    for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+      const a = pts[i], b = pts[j], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (d < LINK) {
+        ctx.strokeStyle = `rgba(109,141,255,${(1 - d / LINK) * .32})`;
+        ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+    }
+    for (const p of pts) { ctx.fillStyle = `rgba(152,160,176,${p.a})`; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); }
+    if (!still) raf = requestAnimationFrame(frame);
+  }
+  addEventListener("resize", () => { size(); if (still) frame(); });
+  addEventListener("pointermove", (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+  addEventListener("pointerleave", () => { mouse.x = mouse.y = -1e4; });
+  document.addEventListener("visibilitychange", () => {
+    if (still) return;
+    if (document.hidden) cancelAnimationFrame(raf); else raf = requestAnimationFrame(frame);
+  });
+  size(); frame();
+})();
+</script>
+</body>
+</html>
