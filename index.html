@@ -199,6 +199,9 @@ mark { background:rgba(109,141,255,.28); color:inherit; padding:0 1px; border-ra
 .dcol p.body { color:var(--ink-2); font-size:13px; margin:0; white-space:pre-wrap;
   display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden }
 .dcol p.none { color:var(--ink-3); font-size:12.5px; font-style:italic; margin:0 }
+.dactions { display:flex; flex-wrap:wrap; gap:6px }
+.dactions .spacer { flex:1 }
+.tok { font:11.5px var(--mono); color:var(--accent); background:var(--accent-soft); border-radius:4px; padding:0 3px }
 .group { border-top:1px solid var(--line); margin:18px 0 0; padding-top:14px }
 .group > .eyebrow { color:var(--ink-3) }
 .seg { display:inline-flex; border:1px solid var(--line-2); border-radius:8px; overflow:hidden }
@@ -357,7 +360,7 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
   <!-- ─────────────── Drafts ─────────────── -->
   <section id="view-drafts" hidden>
     <h1>Draft messages</h1>
-    <p class="lede">Saved messages for brands. Placeholders like <code>{brand}</code> fill in automatically when you send one from the brand list.</p>
+    <p class="lede">Saved messages for brands. Placeholders like <code>{brand}</code> fill in automatically when you send one from the brand list. Copying from here fills in your details and leaves <code>{brand}</code> and <code>{contact}</code> for you to replace.</p>
     <div class="drafts">
       <div class="dlist" id="dlist"></div>
       <div class="side">
@@ -994,11 +997,23 @@ $("tokens").querySelectorAll("button").forEach((b) => b.addEventListener("click"
   const ta = $(lastBox); ta.focus();
   ta.setRangeText(b.dataset.t, ta.selectionStart, ta.selectionEnd, "end");
 }));
+// Without a brand, {brand} and {contact} stay as placeholders to fill by hand.
 function fill(text, b) {
   const s = db.settings;
-  const map = { brand: b?.brand, contact: b?.contact || "there", sender: s.sender || "[your name]", event: s.event || "[event]", org: s.org || "[organisation]" };
+  const map = { brand: b ? b.brand : "{brand}", contact: b ? b.contact || "there" : "{contact}", sender: s.sender || "[your name]", event: s.event || "[event]", org: s.org || "[organisation]" };
   return String(text || "").replace(/\{(brand|contact|sender|event|org)\}/g, (_, k) => map[k] || "");
 }
+// Clipboard API first; the hidden-textarea fallback covers http:// and older browsers.
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+  document.body.append(ta); ta.select();
+  let ok = false; try { ok = document.execCommand("copy"); } catch {}
+  ta.remove(); return ok;
+}
+const withSubject = (subject, body) => (subject ? `Subject: ${subject}\n\n${body}` : body);
+const previewHTML = (text) => esc(text).replace(/\{(brand|contact|sender|event|org)\}/g, '<span class="tok">{$1}</span>');
 function renderDrafts() {
   const box = $("dlist");
   if (!db.drafts.length) { box.innerHTML = `<div class="panel"><p class="empty">No drafts yet. Write one on the right.</p></div>`; return; }
@@ -1006,14 +1021,26 @@ function renderDrafts() {
     <article class="dcard${d.id === editingDraft ? " editing" : ""}" data-id="${esc(d.id)}">
       <h3>${esc(d.title)}</h3>
       <div class="dcols">
-        <div class="dcol"><h4>WhatsApp</h4>${d.whatsapp ? `<p class="body">${esc(d.whatsapp)}</p>` : `<p class="none">No WhatsApp version. The email text is used instead.</p>`}</div>
-        <div class="dcol"><h4>Email</h4>${d.subject ? `<p class="subj">Subject: ${esc(d.subject)}</p>` : ""}${d.body ? `<p class="body">${esc(d.body)}</p>` : `<p class="none">No email version. The WhatsApp text is used instead.</p>`}</div>
+        <div class="dcol"><h4>WhatsApp</h4>${d.whatsapp ? `<p class="body">${previewHTML(d.whatsapp)}</p>` : `<p class="none">No WhatsApp version. The email text is used instead.</p>`}</div>
+        <div class="dcol"><h4>Email</h4>${d.subject ? `<p class="subj">Subject: ${previewHTML(d.subject)}</p>` : ""}${d.body ? `<p class="body">${previewHTML(d.body)}</p>` : `<p class="none">No email version. The WhatsApp text is used instead.</p>`}</div>
       </div>
-      <button class="btn sm" type="button" data-a="edit">Edit</button>
-      <button class="btn sm ghost danger" type="button" data-a="del">Delete</button>
+      <div class="dactions">
+        <button class="btn sm" type="button" data-a="copy-wa" aria-label="Copy WhatsApp text of ${esc(d.title)}">Copy WhatsApp</button>
+        <button class="btn sm" type="button" data-a="copy-email" aria-label="Copy email text of ${esc(d.title)}">Copy email</button>
+        <span class="spacer"></span>
+        <button class="btn sm ghost" type="button" data-a="edit">Edit</button>
+        <button class="btn sm ghost danger" type="button" data-a="del">Delete</button>
+      </div>
     </article>`).join("");
   box.querySelectorAll(".dcard").forEach((c) => {
     c.querySelector('[data-a="edit"]').addEventListener("click", () => editDraft(c.dataset.id));
+    const copy = async (text, what) => toast((await copyText(fill(text))) ? `${what} copied` : "Couldn't copy. Open the draft and copy by hand.");
+    c.querySelector('[data-a="copy-wa"]').addEventListener("click", () => {
+      const d = db.drafts.find((x) => x.id === c.dataset.id); copy(d.whatsapp || d.body, "WhatsApp text");
+    });
+    c.querySelector('[data-a="copy-email"]').addEventListener("click", () => {
+      const d = db.drafts.find((x) => x.id === c.dataset.id); copy(withSubject(d.subject, d.body || d.whatsapp), "Email text");
+    });
     c.querySelector('[data-a="del"]').addEventListener("click", () => {
       const d = db.drafts.find((x) => x.id === c.dataset.id);
       if (!confirm(`Delete the draft "${d.title}"?`)) return;
@@ -1117,8 +1144,9 @@ $("cEmail").addEventListener("click", () => {
   afterSend("Opened your email app");
 });
 $("cCopy").addEventListener("click", async () => {
-  try { await navigator.clipboard.writeText($("cBody").value); afterSend("Message copied"); }
-  catch { $("cBody").select(); toast("Press Ctrl/Cmd + C to copy"); }
+  const text = channel === "email" ? withSubject($("cSubject").value.trim(), $("cBody").value) : $("cBody").value;
+  if (await copyText(text)) afterSend(channel === "email" ? "Subject and message copied" : "Message copied");
+  else { $("cBody").select(); toast("Press Ctrl/Cmd + C to copy"); }
 });
 $("cMark").addEventListener("click", () => { setStatus(composing, "Messaged"); $("cMark").hidden = true; });
 $("cClose").addEventListener("click", () => $("composer").close());
@@ -1150,7 +1178,7 @@ $("disconnect").addEventListener("click", () => {
 fetch("apps-script.gs").then((r) => (r.ok ? r.text() : Promise.reject())).then((t) => ($("scriptCode").textContent = t))
   .catch(() => ($("scriptCode").textContent = "Couldn't load apps-script.gs. Open it from the dashboard's folder instead."));
 $("copyScript").addEventListener("click", async () => {
-  try { await navigator.clipboard.writeText($("scriptCode").textContent); toast("Script copied"); } catch { toast("Select the script and copy it"); }
+  toast((await copyText($("scriptCode").textContent)) ? "Script copied" : "Select the script and copy it");
 });
 
 // ───────── Views ─────────
