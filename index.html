@@ -192,7 +192,7 @@ td { padding:9px 12px; vertical-align:middle; font-size:13.5px }
 .c-brand b { font-weight:600; display:block }
 .c-brand small { display:block; color:var(--ink-2); font-size:11.5px }
 .c-phone { font-variant-numeric:tabular-nums; white-space:nowrap }
-.c-when { color:var(--ink-2); font-size:12.5px; white-space:nowrap }
+td.c-when { color:var(--ink-2); font-size:12.5px; white-space:nowrap }
 td.c-type { color:var(--ink-2); font-size:12.5px; white-space:nowrap }
 td.c-type small { display:block; color:var(--ink-2); font-size:11.5px }
 .c-act { text-align:right; white-space:nowrap }
@@ -300,6 +300,7 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
   td.c-type { grid-area:type; white-space:normal } td.c-type small { display:inline; margin-left:6px }
   .c-act { grid-area:act; display:flex; gap:6px; margin-top:10px; text-align:left }
   .c-act .btn { flex:1; min-height:var(--tap) } .c-act .btn + .btn { margin-left:0 }
+  .dactions .spacer { display:none } .dactions .btn { flex:1 1 auto }
   .search kbd { display:none } .search input { padding-right:11px }
 }
 </style>
