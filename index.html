@@ -131,6 +131,18 @@ textarea { resize:vertical; min-height:80px; line-height:1.6 }
 .alert { border:1px solid var(--warn); background:rgba(211,162,92,.1); border-radius:var(--radius); padding:10px 12px; font-size:13px; margin:0 0 14px }
 .alert.bad { border-color:var(--bad); background:rgba(212,121,111,.1) }
 .alert b { font-weight:600 }
+/* Duplicate warnings: shown under the field while typing, never block saving */
+.dup:empty { display:none }
+.dup { display:flex; align-items:flex-start; gap:10px; margin:8px 0 0; padding:10px 12px; font-size:13px; line-height:1.5;
+  border:1px solid rgba(211,162,92,.5); background:rgba(211,162,92,.12); border-radius:var(--radius); color:var(--ink) }
+.dup::before { content:"!"; flex:none; display:grid; place-items:center; width:18px; height:18px; margin-top:1px; border-radius:50%;
+  background:var(--warn); color:var(--accent-ink); font-weight:650; font-size:12px }
+.dup .meta { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; margin-top:3px; color:var(--ink-2); font-size:12.5px }
+.dup .btn { margin-top:8px }
+#dupPhone { margin:-6px 0 14px }
+.confirm { margin:0 0 14px; padding:12px 14px; font-size:13px; border:1px solid var(--warn); background:rgba(211,162,92,.1); border-radius:var(--radius-lg) }
+.confirm p { margin:0 0 10px }
+.confirm .actions { margin:0 }
 .alert .btn { margin-top:8px }
 .linkish { background:none; border:0; padding:0; color:var(--accent); font:inherit; cursor:pointer; text-decoration:underline }
 
@@ -269,10 +281,10 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
         <p class="eyebrow" id="formEyebrow">New brand</p>
         <h2 id="formTitle">Add a brand</h2>
         <form id="brandForm" novalidate>
-          <div id="dupAlert"></div>
           <div class="field" id="f-brand"><label for="brand">Brand name</label>
             <input id="brand" type="text" autocomplete="off" required>
-            <div class="helper" data-hint="Checked against every saved brand as you type"></div></div>
+            <div class="helper" data-hint="Checked against every saved brand as you type"></div>
+            <div class="dup" id="dupBrand" role="status" aria-live="polite"></div></div>
           <div class="field" id="f-type"><span class="label" id="typeLabel">Brand type</span><div id="typeMount"></div>
             <div class="helper" data-hint=""></div></div>
           <div class="field" id="f-contact"><label for="contact">Contact person <span class="opt">optional</span></label>
@@ -286,6 +298,7 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
               <input id="email" type="email" autocomplete="off">
               <div class="helper" data-hint=""></div></div>
           </div>
+          <div class="dup" id="dupPhone" role="status" aria-live="polite"></div>
           <div class="field"><span class="label" id="statusLabel">Status</span><div id="statusMount"></div></div>
           <div class="field" id="f-by"><label for="addedBy">Added by</label>
             <input id="addedBy" type="text" list="teamNames" autocomplete="off" placeholder="Your name">
@@ -294,6 +307,13 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
           <div class="field" id="f-notes"><label for="notes">Notes <span class="opt">optional</span></label>
             <textarea id="notes" rows="3" placeholder="Budget, who referred them, what they asked for…"></textarea>
             <div class="helper" data-hint=""></div></div>
+          <div class="confirm" id="dupConfirm" role="alert" hidden>
+            <p id="dupConfirmText"></p>
+            <div class="actions">
+              <button class="btn primary" type="button" id="saveAnyway">Save anyway</button>
+              <button class="btn ghost" type="button" id="dupReview">Go back</button>
+            </div>
+          </div>
           <div class="actions">
             <button class="btn primary" type="submit" id="saveBtn">Save brand</button>
             <button class="btn ghost" type="button" id="cancelEdit" hidden>Cancel</button>
@@ -721,7 +741,7 @@ async function syncNow({ quiet } = {}) {
 }
 
 // ───────── Brands ─────────
-let filter = "", typeFilter = "", byFilter = "", query = "", editingId = null, phoneConfirmed = false;
+let filter = "", typeFilter = "", byFilter = "", query = "", editingId = null, dupConfirmed = false;
 const statusSel = chipSelect({ options: STATUSES, value: "Not contacted", labelledBy: "statusLabel" });
 $("statusMount").append(statusSel);
 const typeSel = chipSelect({ options: BRAND_TYPES, placeholder: "Select...", labelledBy: "typeLabel", onChange: () => setError("f-type", "") });
@@ -756,44 +776,48 @@ function findDuplicates(brand, phone, exceptId) {
     phone: np.length >= 8 ? db.brands.find((b) => b.id !== exceptId && normPhone(b.phone) === np) : null,
   };
 }
+// Each warning box is rewritten only when the matched brand changes, so a
+// screen reader announces it once rather than on every keystroke.
+function paintDup(box, match, html) {
+  const key = match ? match.id : "";
+  if (box.dataset.key === key) return;
+  box.dataset.key = key;
+  box.innerHTML = match ? `<div>${html}<div><button type="button" class="btn sm" data-open="${esc(match.id)}">Open ${esc(match.brand)}</button></div></div>` : "";
+  box.querySelector("[data-open]")?.addEventListener("click", () => startEdit(match.id, true));
+}
+const dupMeta = (b) => `<div class="meta">${chipHTML(statusOf(b.status))}${b.addedBy ? `<span>added by ${esc(nameShow(b.addedBy))}</span>` : ""}${b.updatedAt ? `<span>updated ${esc(when(b.updatedAt))}</span>` : ""}</div>`;
 function showDupes() {
   const d = findDuplicates($("brand").value, $("phone").value, editingId);
-  const box = $("dupAlert");
-  let html = "";
-  if (d.brand) {
-    html += `<div class="alert bad" role="alert"><b>${esc(d.brand.brand)} is already on the list</b>${d.brand.addedBy ? `, added by ${esc(nameShow(d.brand.addedBy))}` : ""}, marked ${esc(d.brand.status)} and last updated ${esc(when(d.brand.updatedAt))}.
-      <div><button type="button" class="btn sm" data-open="${esc(d.brand.id)}">Open that brand instead</button></div></div>`;
-  }
-  if (d.phone && (!d.brand || d.phone.id !== d.brand.id)) {
-    html += `<div class="alert" role="alert"><b>This number is already saved</b> for ${esc(d.phone.brand)}. If it's the same agency handling both brands, you can save anyway.</div>`;
-  }
-  box.innerHTML = html;
-  box.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => startEdit(b.dataset.open, true)));
+  paintDup($("dupBrand"), d.brand, d.brand && `<b>${esc(d.brand.brand)} is already on the list.</b>${dupMeta(d.brand)}`);
+  const phone = d.phone && (!d.brand || d.phone.id !== d.brand.id) ? d.phone : null;
+  paintDup($("dupPhone"), phone, phone && `<b>This number is already saved for ${esc(phone.brand)}.</b> If one agency handles both brands, you can still save.`);
   return d;
 }
+function hideDupConfirm() { dupConfirmed = false; $("dupConfirm").hidden = true; }
 ["brand", "phone"].forEach((id) => $(id).addEventListener("input", () => {
-  phoneConfirmed = false; $("saveBtn").textContent = editingId ? "Save changes" : "Save brand";
-  setError("f-" + id, ""); showDupes();
+  hideDupConfirm(); setError("f-" + id, ""); showDupes();
 }));
+$("saveAnyway").addEventListener("click", () => { dupConfirmed = true; $("brandForm").requestSubmit(); });
+$("dupReview").addEventListener("click", () => { hideDupConfirm(); $("brand").focus(); });
 
 function resetForm() {
-  editingId = null; phoneConfirmed = false;
+  editingId = null; hideDupConfirm();
   $("brandForm").reset(); statusSel.set("Not contacted"); typeSel.set("");
   $("addedBy").value = db.settings.me || db.settings.sender || "";
   ["f-brand", "f-phone", "f-email", "f-type", "f-by"].forEach((f) => setError(f, ""));
-  $("dupAlert").innerHTML = "";
+  ["dupBrand", "dupPhone"].forEach((id) => { $(id).innerHTML = ""; $(id).dataset.key = ""; });
   $("formEyebrow").textContent = "New brand"; $("formTitle").textContent = "Add a brand";
   $("saveBtn").textContent = "Save brand"; $("cancelEdit").hidden = true;
   renderRows();
 }
 function startEdit(id, flash) {
   const b = db.brands.find((x) => x.id === id); if (!b) return;
-  editingId = id; phoneConfirmed = false;
+  editingId = id; hideDupConfirm();
   $("brand").value = b.brand; $("contact").value = b.contact || ""; $("phone").value = fmtPhone(b.phone);
   $("email").value = b.email || ""; $("notes").value = b.notes || ""; statusSel.set(statusOf(b.status).value);
   typeSel.set(b.type || ""); $("addedBy").value = b.addedBy || "";
   ["f-brand", "f-phone", "f-email", "f-type", "f-by"].forEach((f) => setError(f, ""));
-  $("dupAlert").innerHTML = "";
+  ["dupBrand", "dupPhone"].forEach((id) => { $(id).innerHTML = ""; $(id).dataset.key = ""; });
   $("formEyebrow").textContent = "Editing"; $("formTitle").textContent = b.brand;
   $("saveBtn").textContent = "Save changes"; $("cancelEdit").hidden = false;
   renderRows();
@@ -819,9 +843,15 @@ $("brandForm").addEventListener("submit", (e) => {
   if (!type) { setError("f-type", "Pick what kind of brand this is"); ok = false; }
   if (!addedBy) { setError("f-by", "Add your name so the team knows who added it"); ok = false; }
   const d = showDupes();
-  if (d.brand) { ok = false; $("dupAlert").querySelector(".alert")?.scrollIntoView({ block: "nearest" }); }
   if (!ok) { (document.querySelector("#brandForm .error input, #brandForm .error .cs > button") || $("brand")).focus(); return; }
-  if (d.phone && !phoneConfirmed) { phoneConfirmed = true; $("saveBtn").textContent = "Save anyway"; return; }
+  // A likely duplicate never blocks the save; it asks once, in words.
+  if ((d.brand || d.phone) && !dupConfirmed) {
+    $("dupConfirmText").textContent = d.brand
+      ? `${d.brand.brand} is already on the list. Save this as a separate entry anyway?`
+      : `This number is already saved for ${d.phone.brand}. Save anyway?`;
+    $("dupConfirm").hidden = false; $("saveAnyway").focus();
+    return;
+  }
 
   const prev = db.brands.find((b) => b.id === editingId);
   const row = {
