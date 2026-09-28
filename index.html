@@ -46,7 +46,7 @@ a { color:inherit }
 .nav a { text-decoration:none; font-size:13.5px; color:var(--ink-2); padding:6px 11px; white-space:nowrap; border-radius:var(--radius) }
 .nav a:hover { color:var(--ink); background:var(--surface-2) }
 .nav a[aria-current] { color:var(--ink); background:var(--surface-2); box-shadow:inset 0 0 0 1px var(--line-2) }
-.syncpill { margin-left:auto; display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-3);
+.syncpill { margin-left:auto; display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-2);
   text-decoration:none; border:1px solid var(--line-2); border-radius:var(--radius-pill); padding:4px 10px; white-space:nowrap }
 .syncpill::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor }
 .syncpill.ok { color:var(--good) } .syncpill.busy { color:var(--accent) } .syncpill.error { color:var(--bad); border-color:var(--bad) }
@@ -65,8 +65,8 @@ h2 { font-size:15px; letter-spacing:-.005em; margin:0; font-weight:600 }
 .filehead .hint { margin:0 }
 .stack { margin-top:14px }
 .pad { padding:18px 20px }
-.hint { color:var(--ink-3); font-size:12.5px; margin:3px 0 0 }
-.empty { color:var(--ink-3); font-size:13px; padding:34px 16px; text-align:center; margin:0 }
+.hint { color:var(--ink-2); font-size:12.5px; margin:3px 0 0 }
+.empty { color:var(--ink-2); font-size:13px; padding:34px 16px; text-align:center; margin:0 }
 code { font:12.5px var(--mono); background:var(--surface-3); padding:1px 5px; border-radius:5px; color:var(--ink-2) }
 kbd { font:11.5px/1 var(--mono); background:var(--surface-3); border:1px solid var(--line-2); border-bottom-width:2px; border-radius:5px; padding:3px 5px; color:var(--ink-2) }
 
@@ -81,20 +81,22 @@ kbd { font:11.5px/1 var(--mono); background:var(--surface-3); border:1px solid v
 .btn.sm { padding:6px 11px; font-size:12.5px }
 .btn.ghost { background:transparent }
 .btn.danger:hover { border-color:var(--bad); color:var(--bad) }
+.btn.danger-solid { background:var(--bad); border-color:var(--bad); color:var(--accent-ink); font-weight:600 }
+.ask { align-self:center; font-size:12.5px; color:var(--ink); margin-right:4px; white-space:normal }
 .btn[disabled], .btn[aria-disabled="true"] { opacity:.45; pointer-events:none }
 
 /* Fields */
 .field { margin-bottom:14px }
 .field.flush { margin-bottom:0 }
 .field > label, .field > .label { display:block; font-size:13px; font-weight:550; margin-bottom:5px }
-.opt { color:var(--ink-3); font-weight:400 }
+.opt { color:var(--ink-2); font-weight:400 }
 input[type=text], input[type=email], input[type=tel], input[type=url], input[type=search], input[type=password], textarea {
   width:100%; background:var(--surface-2); border:1px solid var(--line-2); color:var(--ink); border-radius:var(--radius);
   padding:9px 11px; font:inherit; font-size:14px }
 input::placeholder, textarea::placeholder { color:var(--ink-3) }
 input:hover, textarea:hover { border-color:var(--accent-line) }
 textarea { resize:vertical; min-height:80px; line-height:1.6 }
-.helper { font-size:12px; color:var(--ink-3); margin-top:4px; min-height:15px }
+.helper { font-size:12px; color:var(--ink-2); margin-top:4px; min-height:15px }
 .field.error input, .field.error textarea { border-color:var(--bad) }
 .field.error .helper { color:var(--bad) }
 .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px }
@@ -116,7 +118,7 @@ textarea { resize:vertical; min-height:80px; line-height:1.6 }
 .cs > button[aria-expanded="true"] { border-color:var(--accent) }
 .caret { width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid var(--ink-3); flex:none }
 .cs .ph { color:var(--ink-3); font-size:14px }
-.cs .pre { color:var(--ink-3); font-size:12.5px; margin-right:-2px }
+.cs .pre { color:var(--ink-2); font-size:12.5px; margin-right:-2px }
 .cs.filter > button { width:auto; min-height:42px; gap:9px }
 .field.error .cs > button { border-color:var(--bad) }
 .cs.compact > button { width:auto; min-height:36px; background:transparent; border-color:transparent; padding:3px 7px 3px 4px; gap:7px }
@@ -125,6 +127,7 @@ textarea { resize:vertical; min-height:80px; line-height:1.6 }
   box-shadow:0 12px 32px rgba(0,0,0,.45); max-height:320px; overflow-y:auto; outline:none }
 .cs-pop li { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:6px 8px; border-radius:7px; cursor:pointer }
 .cs-pop li.active { background:var(--surface-3) }
+.cs-pop:focus-visible li.active { box-shadow:inset 0 0 0 1px var(--accent-line) }
 .cs-pop li[aria-selected="true"]::after { content:"✓"; color:var(--ink-2); font-size:12px }
 
 /* Alerts */
@@ -155,7 +158,7 @@ textarea { resize:vertical; min-height:80px; line-height:1.6 }
 .stat[aria-pressed="true"] { background:color-mix(in srgb, var(--tone, var(--accent)) 14%, var(--surface)); border-color:var(--tone, var(--accent)) }
 .stat[aria-pressed="true"] span { color:var(--ink) }
 .stat b { display:block; font-size:22px; line-height:1.2; font-variant-numeric:tabular-nums }
-.stat span { color:var(--ink-3); font-size:12px }
+.stat span { color:var(--ink-2); font-size:12px }
 .work { display:grid; grid-template-columns:350px minmax(0,1fr); gap:20px; align-items:start }
 .formpanel { position:sticky; top:76px }
 .formpanel h2 { margin-bottom:14px }
@@ -174,7 +177,7 @@ textarea { resize:vertical; min-height:80px; line-height:1.6 }
 .search { position:relative; flex:1; min-width:220px }
 .search input { padding-right:36px }
 .search kbd { position:absolute; right:8px; top:50%; transform:translateY(-50%); pointer-events:none }
-.shown { color:var(--ink-3); font-size:12.5px; margin-left:auto }
+.shown { color:var(--ink-2); font-size:12.5px; margin-left:auto }
 .toolbar .linkish { font-size:12.5px; padding:4px 0 }
 .tablewrap { overflow-x:auto }
 table { width:100%; border-collapse:collapse }
@@ -187,11 +190,11 @@ tbody tr.flash { box-shadow:inset 3px 0 0 var(--warn); background:rgba(211,162,9
 tbody tr.editing { box-shadow:inset 3px 0 0 var(--accent); background:var(--accent-soft) }
 td { padding:9px 12px; vertical-align:middle; font-size:13.5px }
 .c-brand b { font-weight:600; display:block }
-.c-brand small { display:block; color:var(--ink-3); font-size:11.5px }
+.c-brand small { display:block; color:var(--ink-2); font-size:11.5px }
 .c-phone { font-variant-numeric:tabular-nums; white-space:nowrap }
-.c-when { color:var(--ink-3); font-size:12.5px; white-space:nowrap }
+.c-when { color:var(--ink-2); font-size:12.5px; white-space:nowrap }
 td.c-type { color:var(--ink-2); font-size:12.5px; white-space:nowrap }
-td.c-type small { display:block; color:var(--ink-3); font-size:11.5px }
+td.c-type small { display:block; color:var(--ink-2); font-size:11.5px }
 .c-act { text-align:right; white-space:nowrap }
 .c-act .btn + .btn { margin-left:4px }
 mark { background:rgba(109,141,255,.28); color:inherit; padding:0 1px; border-radius:3px }
@@ -202,13 +205,13 @@ mark { background:rgba(109,141,255,.28); color:inherit; padding:0 1px; border-ra
 .dcard { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-lg); padding:14px 16px }
 .dcard.editing { border-color:var(--accent-line); background:var(--accent-soft) }
 .dcard h3 { margin:0; font-size:14px; font-weight:600 }
-.dcard .subj { color:var(--ink-3); font-size:12px; margin:2px 0 0 }
+.dcard .subj { color:var(--ink-2); font-size:12px; margin:2px 0 0 }
 .dcols { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:10px 0 12px }
 .dcol h4 { margin:0 0 4px; font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-3); font-weight:500 }
 .dcol .subj { margin:0 0 4px }
 .dcol p.body { color:var(--ink-2); font-size:13px; margin:0; white-space:pre-wrap;
   display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; overflow:hidden }
-.dcol p.none { color:var(--ink-3); font-size:12.5px; font-style:italic; margin:0 }
+.dcol p.none { color:var(--ink-2); font-size:12.5px; font-style:italic; margin:0 }
 .dactions { display:flex; flex-wrap:wrap; gap:6px }
 .dactions .spacer { flex:1 }
 .tok { font:11.5px var(--mono); color:var(--accent); background:var(--accent-soft); border-radius:4px; padding:0 3px }
@@ -231,7 +234,7 @@ mark { background:rgba(109,141,255,.28); color:inherit; padding:0 1px; border-ra
 .steps b { color:var(--ink); font-weight:600 }
 pre.code { margin:12px 0 0; max-height:420px; overflow:auto; background:#0a0c0f; border:1px solid var(--line);
   border-radius:var(--radius); padding:14px; font:12px/1.55 var(--mono); color:var(--ink-2) }
-.log { margin:12px 0 0; font-size:12.5px; color:var(--ink-3) }
+.log { margin:12px 0 0; font-size:12.5px; color:var(--ink-2) }
 .log.ok { color:var(--good) } .log.error { color:var(--bad) }
 
 /* Composer dialog */
@@ -241,7 +244,7 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
 .dbody { padding:16px 20px }
 .dfoot { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:14px 20px; border-top:1px solid var(--line) }
 .dfoot .spacer { flex:1 }
-.close { background:none; border:0; color:var(--ink-3); font-size:20px; line-height:1; cursor:pointer; padding:2px 4px }
+.close { background:none; border:0; color:var(--ink-2); font-size:22px; line-height:1; cursor:pointer; padding:0; min-width:var(--tap); min-height:var(--tap); margin:-10px -12px 0 0; border-radius:var(--radius) }
 .close:hover { color:var(--ink) }
 #cBody { min-height:220px }
 
@@ -249,6 +252,17 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
   border:1px solid var(--line-2); border-radius:var(--radius); color:var(--ink); padding:9px 14px; font-size:13px; box-shadow:0 10px 30px rgba(0,0,0,.4);
   width:max-content; max-width:calc(100vw - 32px); display:flex; align-items:center; gap:10px }
 .toast .linkish { font-weight:600; padding:4px 2px }
+
+/* Touch screens: every control at least 44px tall (WCAG 2.5.5) */
+@media (pointer:coarse) {
+  .btn, .btn.sm, .nav a, .seg button, .tokens button, .cs > button, .cs.compact > button, .cs.filter > button,
+    .toolbar .linkish, .toast .linkish, .syncpill, input[type], textarea { min-height:var(--tap) }
+  .nav a { display:inline-flex; align-items:center }
+  /* 16px text stops iOS Safari zooming in when a field is focused */
+  input[type], textarea { font-size:16px }
+  .tokens button { min-width:var(--tap) }
+  .cs-pop li { min-height:var(--tap) }
+}
 
 @media (max-width:1060px) {
   .work, .drafts, .sync { grid-template-columns:minmax(0,1fr) }
@@ -979,7 +993,8 @@ function renderRows() {
     }));
     tr.querySelector('[data-a="msg"]').addEventListener("click", () => openComposer(b.id));
     tr.querySelector('[data-a="edit"]').addEventListener("click", () => startEdit(b.id));
-    tr.querySelector('[data-a="del"]').addEventListener("click", () => removeBrand(b.id));
+    tr.querySelector('[data-a="del"]').addEventListener("click", () =>
+      confirmInline(tr.querySelector(".c-act"), `Delete ${b.brand}? It's removed from the shared sheet too.`, () => removeBrand(b.id)));
     tbody.append(tr);
   }
   const none = $("noRows");
@@ -1017,9 +1032,22 @@ function setStatus(id, status, undoing) {
   if (undoing) toast(`${b.brand} is back to ${status}`);
   else toast(`${b.brand} → ${status}`, { label: "Undo", run: () => setStatus(id, prev, true) });
 }
+// Swaps a set of buttons for "Delete X? [Delete] [Keep]", in place of a native confirm().
+let askN = 0;
+function confirmInline(box, question, onYes) {
+  const before = [...box.childNodes];
+  const q = document.createElement("span"); q.className = "ask"; q.id = "ask-" + ++askN; q.textContent = question;
+  const btn = (cls, text) => Object.assign(document.createElement("button"), { type: "button", className: "btn sm " + cls, textContent: text });
+  const yes = btn("danger-solid", "Delete"), no = btn("ghost", "Keep");
+  yes.setAttribute("aria-describedby", q.id); no.setAttribute("aria-describedby", q.id);
+  const onKey = (e) => { if (e.key === "Escape") back(); };
+  function back() { box.removeEventListener("keydown", onKey); box.replaceChildren(...before); before.find((n) => n.dataset?.a === "del")?.focus(); }
+  yes.addEventListener("click", () => { box.removeEventListener("keydown", onKey); onYes(); });
+  no.addEventListener("click", back); box.addEventListener("keydown", onKey);
+  box.replaceChildren(q, yes, no); no.focus();
+}
 function removeBrand(id) {
   const b = db.brands.find((x) => x.id === id); if (!b) return;
-  if (!confirm(`Delete ${b.brand}? This removes it from the shared sheet too.`)) return;
   db.brands = db.brands.filter((x) => x.id !== id); save();
   enqueue({ action: "deleteBrand", id });
   if (editingId === id) resetForm();
@@ -1099,14 +1127,13 @@ function renderDrafts() {
     c.querySelector('[data-a="copy-email"]').addEventListener("click", () => {
       const d = db.drafts.find((x) => x.id === c.dataset.id); copy(withSubject(d.subject, d.body || d.whatsapp), "Email text");
     });
-    c.querySelector('[data-a="del"]').addEventListener("click", () => {
+    c.querySelector('[data-a="del"]').addEventListener("click", () => confirmInline(c.querySelector(".dactions"), "Delete this draft?", () => {
       const d = db.drafts.find((x) => x.id === c.dataset.id);
-      if (!confirm(`Delete the draft "${d.title}"?`)) return;
       db.drafts = db.drafts.filter((x) => x.id !== d.id); save();
       enqueue({ action: "saveDrafts", drafts: db.drafts });
       if (editingDraft === d.id) resetDraft();
       renderDrafts(); toast("Draft deleted");
-    });
+    }));
   });
 }
 function editDraft(id) {
