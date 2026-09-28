@@ -83,4 +83,5 @@ This app adds two tokens:
 | `--ink-3` on `--surface` | ≈ 3.5:1 | **fails AA for small text**. Used only for placeholders, decoration and the panel's 11px uppercase captions. Keeping it on captions matches the panel but is an open decision (tune the token, or move captions to `--ink-2`). |
 
 ## Deliberate deviations from the panel
+- **Square corners everywhere** (team decision, 28 Sep 2026). `--radius`, `--radius-lg` and `--radius-pill` are all `0`, and no component sets its own `border-radius`. Boxes, inputs, buttons, chips, pills, dots, the dialog and the toast are all rectangles. Don't add rounding back.
 - **Particle canvas background** (kept by decision, 28 Sep 2026). The panel's background is flat `--bg`. The canvas is masked behind the content column and stops under `prefers-reduced-motion`.
