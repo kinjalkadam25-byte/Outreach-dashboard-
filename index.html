@@ -159,6 +159,16 @@ textarea { resize:vertical; min-height:80px; line-height:1.6 }
 .work { display:grid; grid-template-columns:350px minmax(0,1fr); gap:20px; align-items:start }
 .formpanel { position:sticky; top:76px }
 .formpanel h2 { margin-bottom:14px }
+#addToggle, #closeForm { display:none }
+.banner { display:flex; align-items:center; gap:12px; flex-wrap:wrap; border-radius:var(--radius-lg); padding:14px 16px; margin:20px 0 0; font-size:13.5px }
+.banner.error { background:rgba(212,121,111,.1); border:1px solid var(--bad) }
+.banner p { flex:1; min-width:200px; margin:0 }
+.banner b { font-weight:600 }
+.banner .actions { margin:0 }
+.empty .btn { margin-top:12px }
+.loading::before { content:""; display:inline-block; width:10px; height:10px; margin-right:9px; border-radius:50%;
+  border:2px solid var(--line-2); border-top-color:var(--accent); vertical-align:-1px; animation:spin .8s linear infinite }
+@keyframes spin { to { transform:rotate(360deg) } }
 .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:4px }
 .toolbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px }
 .search { position:relative; flex:1; min-width:220px }
@@ -243,6 +253,11 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
 @media (max-width:1060px) {
   .work, .drafts, .sync { grid-template-columns:minmax(0,1fr) }
   .formpanel, .side { position:static }
+  /* List first on narrow screens: the form opens from a button above it */
+  #addToggle { display:flex; width:100%; min-height:var(--tap); margin-bottom:12px }
+  #closeForm { display:inline-flex }
+  .work:not(.adding) .formpanel { display:none }
+  .work.adding #addToggle { display:none }
 }
 @media (max-width:720px) {
   .bar { gap:10px; padding:0 12px }
@@ -259,7 +274,19 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
   .stat::before { content:""; order:0; width:8px; height:8px; border-radius:50%; background:var(--tone, var(--ink-2)) }
   .stat span { order:1; font-size:13px; color:var(--ink-2) }
   .stat b { order:2; display:inline; font-size:13px; font-weight:600 }
-  .c-when, .c-type { display:none }
+  /* Each brand row becomes a card */
+  .tablewrap { overflow:visible }
+  table, tbody { display:block }
+  thead { display:none }
+  tbody tr { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 12px; padding:12px 14px;
+    grid-template-areas:"brand status" "phone when" "type type" "act act" }
+  td { padding:0 }
+  .c-brand { grid-area:brand } .c-phone { grid-area:phone; color:var(--ink-2) }
+  .c-status { grid-area:status; justify-self:end } .c-when { grid-area:when; justify-self:end; align-self:center }
+  td.c-type { grid-area:type; white-space:normal } td.c-type small { display:inline; margin-left:6px }
+  .c-act { grid-area:act; display:flex; gap:6px; margin-top:10px; text-align:left }
+  .c-act .btn { flex:1; min-height:var(--tap) } .c-act .btn + .btn { margin-left:0 }
+  .search kbd { display:none } .search input { padding-right:11px }
 }
 </style>
 </head>
@@ -288,9 +315,15 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
       <button class="btn" type="button" id="exportCsv">Export CSV</button>
     </div>
 
+    <div class="banner error" id="syncBanner" role="alert" hidden>
+      <p id="syncBannerText"></p>
+      <span class="actions"><button class="btn sm" type="button" id="syncRetry">Retry</button>
+      <a class="btn sm ghost" href="#sync">Sync settings</a></span>
+    </div>
+
     <div class="stats" id="stats" role="group" aria-label="Filter by status"></div>
 
-    <div class="work">
+    <div class="work" id="work">
       <aside class="panel pad formpanel">
         <p class="eyebrow" id="formEyebrow">New brand</p>
         <h2 id="formTitle">Add a brand</h2>
@@ -331,11 +364,13 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
           <div class="actions">
             <button class="btn primary" type="submit" id="saveBtn">Save brand</button>
             <button class="btn ghost" type="button" id="cancelEdit" hidden>Cancel</button>
+            <button class="btn ghost" type="button" id="closeForm">Close</button>
           </div>
         </form>
       </aside>
 
       <div>
+        <button class="btn primary" type="button" id="addToggle" aria-controls="brandForm" aria-expanded="false">+ Add a brand</button>
         <div class="toolbar">
           <div class="search">
             <input id="q" type="search" placeholder="Search a brand, contact or number…" autocomplete="off" spellcheck="false" aria-label="Search brands and numbers">
@@ -351,7 +386,7 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
             <thead><tr><th>Brand</th><th class="c-type">Type</th><th>Number</th><th>Status</th><th class="c-when">Updated</th><th><span hidden>Actions</span></th></tr></thead>
             <tbody id="rows"></tbody>
           </table>
-          <p class="empty" id="noRows" hidden></p>
+          <div class="empty" id="noRows" hidden></div>
         </div>
       </div>
     </div>
@@ -703,8 +738,12 @@ addEventListener("scroll", (e) => {
 }, true);
 
 // ───────── Sync with Google Sheet ─────────
-let syncing = false;
+let syncing = false, syncState = "local";
 function setSync(state, text, detail = text) {
+  syncState = state;
+  $("syncBanner").hidden = state !== "error";
+  $("syncBannerText").innerHTML = `<b>Not in sync with the Google Sheet.</b> ${esc(detail === text && db.queue.length ? `${detail}; they'll go up on the next sync.` : detail)}`;
+  if (!db.brands.length) renderRows();
   const p = $("syncPill");
   p.className = "syncpill " + state;
   $("syncText").textContent = text;
@@ -832,7 +871,8 @@ function resetForm() {
   ["f-brand", "f-phone", "f-email", "f-type", "f-by"].forEach((f) => setError(f, ""));
   ["dupBrand", "dupPhone"].forEach((id) => { $(id).innerHTML = ""; $(id).dataset.key = ""; });
   $("formEyebrow").textContent = "New brand"; $("formTitle").textContent = "Add a brand";
-  $("saveBtn").textContent = "Save brand"; $("cancelEdit").hidden = true;
+  $("saveBtn").textContent = "Save brand"; $("cancelEdit").hidden = true; $("closeForm").hidden = false;
+  setFormOpen(false);
   renderRows();
 }
 function startEdit(id, flash) {
@@ -844,7 +884,8 @@ function startEdit(id, flash) {
   ["f-brand", "f-phone", "f-email", "f-type", "f-by"].forEach((f) => setError(f, ""));
   ["dupBrand", "dupPhone"].forEach((id) => { $(id).innerHTML = ""; $(id).dataset.key = ""; });
   $("formEyebrow").textContent = "Editing"; $("formTitle").textContent = b.brand;
-  $("saveBtn").textContent = "Save changes"; $("cancelEdit").hidden = false;
+  $("saveBtn").textContent = "Save changes"; $("cancelEdit").hidden = false; $("closeForm").hidden = true;
+  setFormOpen(true);
   renderRows();
   if (!document.querySelector(`tr[data-id="${CSS.escape(id)}"]`)) {
     // Hidden by a filter: clear them all so the row being edited is on screen.
@@ -855,6 +896,15 @@ function startEdit(id, flash) {
   $("brand").focus();
 }
 $("cancelEdit").addEventListener("click", resetForm);
+$("closeForm").addEventListener("click", resetForm);
+// Only matters below 1060px, where the form is folded away until needed.
+function setFormOpen(open) {
+  $("work").classList.toggle("adding", open);
+  $("addToggle").setAttribute("aria-expanded", String(open));
+}
+function openForm() { setFormOpen(true); $("brand").focus(); }
+$("addToggle").addEventListener("click", openForm);
+$("syncRetry").addEventListener("click", () => syncNow());
 
 $("brandForm").addEventListener("submit", (e) => {
   e.preventDefault();
@@ -934,7 +984,11 @@ function renderRows() {
   }
   const none = $("noRows");
   none.hidden = list.length > 0;
-  none.textContent = db.brands.length ? "No brands match. Try part of the name, or at least three digits of the number." : "No brands yet. Add the first one with the form on the left.";
+  $("rows").closest("table").setAttribute("aria-busy", String(syncState === "busy" && !db.brands.length));
+  if (syncState === "busy" && !db.brands.length) none.innerHTML = `<span class="loading">Loading brands from the Google Sheet…</span>`;
+  else if (!db.brands.length) none.innerHTML = `No brands yet.<br><button class="btn" type="button" data-empty="add">Add the first brand</button>`;
+  else none.innerHTML = `No brands match. Try part of the name, or at least three digits of the number.<br><button class="btn" type="button" data-empty="clear">Clear filters</button>`;
+  none.querySelector("[data-empty]")?.addEventListener("click", (e) => (e.target.dataset.empty === "add" ? openForm() : clearAllFilters()));
   $("shown").textContent = db.brands.length ? `${list.length} of ${db.brands.length}` : "";
   $("clearFilters").hidden = !(filter || typeFilter || byFilter || q);
 }
@@ -1016,7 +1070,11 @@ const withSubject = (subject, body) => (subject ? `Subject: ${subject}\n\n${body
 const previewHTML = (text) => esc(text).replace(/\{(brand|contact|sender|event|org)\}/g, '<span class="tok">{$1}</span>');
 function renderDrafts() {
   const box = $("dlist");
-  if (!db.drafts.length) { box.innerHTML = `<div class="panel"><p class="empty">No drafts yet. Write one on the right.</p></div>`; return; }
+  if (!db.drafts.length) {
+    box.innerHTML = `<div class="panel empty">No drafts yet.<br><button class="btn" type="button" id="firstDraft">Write the first draft</button></div>`;
+    $("firstDraft").addEventListener("click", () => $("dname").focus());
+    return;
+  }
   box.innerHTML = db.drafts.map((d) => `
     <article class="dcard${d.id === editingDraft ? " editing" : ""}" data-id="${esc(d.id)}">
       <h3>${esc(d.title)}</h3>
