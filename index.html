@@ -811,7 +811,7 @@ async function syncNow({ quiet } = {}) {
     renderAll(); refreshPill();
     return true;
   } catch (err) {
-    setSync("error", "Sync failed", "Sync failed: " + (err.message === "Failed to fetch" ? "couldn't reach the sheet. Check the URL and that access is set to Anyone." : err.message));
+    setSync("error", "Sync failed", "Sync failed: " + (err.message === "Failed to fetch" ? "couldn't reach the sheet. Check the URL ends in /exec and the deployment's access is \"Anyone\" (not \"Anyone with Google account\")." : err.message));
     return false;
   } finally { syncing = false; }
 }
@@ -1241,7 +1241,8 @@ $("sUrl").value = db.settings.url; $("sToken").value = db.settings.token;
 $("syncForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const url = $("sUrl").value.trim(), token = $("sToken").value;
-  setError("f-url", /^https:\/\/script\.google(usercontent)?\.com\/.+/.test(url) ? "" : "Paste the Web app URL from Apps Script (starts with https://script.google.com/)");
+  setError("f-url", !/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(url) ? "Paste the Web app URL from Apps Script (starts with https://script.google.com/)"
+    : /\/dev\/?$/.test(url) ? "That's the test URL, which only works for you. Use the Web app URL ending in /exec" : "");
   setError("f-token", token ? "" : "Enter the token from the script");
   if ($("f-url").classList.contains("error") || !token) return;
   const hadLocal = !db.settings.url && db.brands.length;
