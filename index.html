@@ -190,6 +190,7 @@ tbody tr.editing { box-shadow:inset 3px 0 0 var(--accent); background:var(--acce
 td { padding:9px 12px; vertical-align:middle; font-size:13.5px }
 .c-brand b { font-weight:600; display:block }
 .c-brand small { display:block; color:var(--ink-2); font-size:11.5px }
+.c-brand small.mailst b { display:inline; font-weight:600; color:var(--good) }
 .c-phone { font-variant-numeric:tabular-nums; white-space:nowrap }
 td.c-when { color:var(--ink-2); font-size:12.5px; white-space:nowrap }
 td.c-type { color:var(--ink-2); font-size:12.5px; white-space:nowrap }
@@ -489,9 +490,10 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
         <ol class="steps">
           <li>Create a Google Sheet for the team, then open <b>Extensions → Apps Script</b>.</li>
           <li>Replace <code>Code.gs</code> with the script below and change <code>TOKEN</code> to a long random phrase.</li>
-          <li><b>Deploy → New deployment → Web app.</b> Execute as <b>Me</b>, access <b>Anyone</b>. Authorise it.</li>
+          <li>Choose <b>setup</b> in the function menu and press <b>Run</b>. Allow the Sheets and Gmail permissions. This lets the dashboard send emails and starts a 10-minute check for replies.</li>
+          <li><b>Deploy → New deployment → Web app.</b> Execute as <b>Me</b>, access <b>Anyone</b>.</li>
           <li>Copy the Web app URL and paste it, with the token, into the form on the left.</li>
-          <li>Share the URL and token with the finance team only. The sheet gets <b>Brands</b> and <b>Drafts</b> tabs.</li>
+          <li>Share the URL and token with the finance team only. The sheet gets <b>Brands</b>, <b>Drafts</b> and <b>Emails</b> tabs. Emails go out from the Gmail account that ran setup.</li>
         </ol>
         <div class="filehead">
           <span class="hint">apps-script.gs</span>
@@ -506,7 +508,7 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
 <!-- ─────────────── Composer ─────────────── -->
 <dialog id="composer" aria-labelledby="cTitle">
   <div class="dhead">
-    <div><p class="eyebrow">Message</p><h2 id="cTitle"></h2><p class="hint" id="cMeta"></p></div>
+    <div><p class="eyebrow">Message</p><h2 id="cTitle"></h2><p class="hint" id="cMeta"></p><p class="hint" id="cHistory" hidden></p></div>
     <button class="close" type="button" id="cClose" aria-label="Close">×</button>
   </div>
   <div class="dbody">
@@ -525,7 +527,8 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
   </div>
   <div class="dfoot">
     <button class="btn primary" type="button" id="cWhatsapp">Open in WhatsApp</button>
-    <button class="btn" type="button" id="cEmail">Open in email</button>
+    <button class="btn primary" type="button" id="cSend">Send email</button>
+    <button class="btn" type="button" id="cEmail">Open in email app</button>
     <button class="btn" type="button" id="cCopy">Copy</button>
     <span class="spacer"></span>
     <button class="btn ghost" type="button" id="cMark" hidden>Mark as messaged</button>
@@ -594,7 +597,7 @@ const DEFAULT_WHATSAPP = {
   "d-thanks": "Hi {contact}, thank you so much for confirming {brand}'s support for *{event}*! 🎉 I'll share the next steps shortly. – {sender}",
 };
 DEFAULT_DRAFTS.forEach((d) => (d.whatsapp = DEFAULT_WHATSAPP[d.id]));
-const DEFAULTS = { brands: [], drafts: DEFAULT_DRAFTS, queue: [], settings: { url: "", token: "", me: "", sender: "", event: "", org: "CSI-KJSCE", lastSync: "" } };
+const DEFAULTS = { brands: [], drafts: DEFAULT_DRAFTS, emails: [], queue: [], settings: { url: "", token: "", me: "", sender: "", event: "", org: "CSI-KJSCE", lastSync: "" } };
 
 function load() {
   try {
@@ -772,9 +775,16 @@ function refreshPill() {
 async function call(body) {
   // text/plain keeps this a "simple" request, which Apps Script accepts without a CORS preflight.
   const r = await fetch(db.settings.url, { method: "POST", body: JSON.stringify({ ...body, token: db.settings.token }) });
-  const j = await r.json();
-  if (!j.ok) throw new Error(j.error || "The sheet refused the change");
+  const j = await readJSON(r);
+  if (!j.ok) throw new Error(j.error === "Unknown action" ? "the sheet's script is out of date. Copy the new script from Sheet sync, run setup, and deploy a new version"
+    : j.error || "The sheet refused the change");
   return j;
+}
+// Apps Script answers with an HTML page, not JSON, when it needs authorising again.
+async function readJSON(r) {
+  const t = await r.text();
+  try { return JSON.parse(t); }
+  catch { throw new Error("the script needs permission. Open Apps Script, run setup, allow access, then deploy a new version"); }
 }
 function enqueue(op) {
   if (!db.settings.url) return;
@@ -800,9 +810,17 @@ async function syncNow({ quiet } = {}) {
   syncing = true; if (!quiet) setSync("busy", "Syncing…");
   try {
     const u = new URL(db.settings.url); u.searchParams.set("token", db.settings.token);
-    const j = await (await fetch(u)).json();
+    if (!quiet) u.searchParams.set("replies", "1");
+    const j = await readJSON(await fetch(u));
     if (!j.ok) throw new Error(j.error || "The sheet refused the request");
     db.brands = (j.brands || []).map((b) => ({ ...b, phone: normPhone(b.phone), status: statusOf(b.status).value }));
+    if (j.emails) {
+      const seen = new Set(db.emails.filter((m) => m.repliedAt).map((m) => m.id));
+      const fresh = j.emails.filter((m) => m.repliedAt && !seen.has(m.id));
+      db.emails = j.emails;
+      if (fresh.length && db.emails.length > fresh.length)
+        toast(fresh.length === 1 ? `${fresh[0].brand} replied to your email` : `${fresh.length} brands replied to emails`);
+    }
     if (j.drafts && j.drafts.length) db.drafts = j.drafts;
     else if (db.drafts.length) db.queue.push({ action: "saveDrafts", drafts: db.drafts });
     db.settings.lastSync = now(); save();
@@ -979,7 +997,7 @@ function renderRows() {
     tr.dataset.id = b.id;
     if (b.id === editingId) tr.className = "editing";
     tr.innerHTML = `
-      <td class="c-brand"><b>${highlight(b.brand, q)}</b>${b.contact || b.email ? `<small>${highlight([b.contact, b.email].filter(Boolean).join(" · "), q)}</small>` : ""}</td>
+      <td class="c-brand"><b>${highlight(b.brand, q)}</b>${b.contact || b.email ? `<small>${highlight([b.contact, b.email].filter(Boolean).join(" · "), q)}</small>` : ""}${mailStatus(b.id)}</td>
       <td class="c-type">${esc(b.type || "–")}${b.addedBy ? `<small>by ${esc(nameShow(b.addedBy))}</small>` : ""}</td>
       <td class="c-phone">${markPhone(b.phone, qd)}</td>
       <td class="c-status"></td>
@@ -1004,6 +1022,14 @@ function renderRows() {
   none.querySelector("[data-empty]")?.addEventListener("click", (e) => (e.target.dataset.empty === "add" ? openForm() : clearAllFilters()));
   $("shown").textContent = db.brands.length ? `${list.length} of ${db.brands.length}` : "";
   $("clearFilters").hidden = !(filter || typeFilter || byFilter || q);
+}
+// Latest email to a brand: "Emailed 3 Oct · Replied 4 Oct".
+function lastEmail(id) {
+  return db.emails.filter((m) => m.brandId === id).sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)))[0];
+}
+function mailStatus(id) {
+  const m = lastEmail(id); if (!m) return "";
+  return `<small class="mailst" title="${esc(m.subject)}">Emailed ${esc(when(m.sentAt))}${m.repliedAt ? ` · <b>Replied ${esc(when(m.repliedAt))}</b>` : " · no reply yet"}</small>`;
 }
 function clearAllFilters() {
   query = filter = typeFilter = byFilter = ""; $("q").value = ""; typeFilterSel.set(""); byFilterSel.set("");
@@ -1184,7 +1210,13 @@ function openComposer(id) {
   draftSel.setOptions(opts, opts.find((o) => o.value === pick)?.value);
   fillComposer();
   setChannel("whatsapp");
-  $("cEmail").disabled = !b.email; $("cEmail").title = b.email ? "" : "No email saved for this brand";
+  $("cEmail").disabled = $("cSend").disabled = !b.email;
+  $("cEmail").title = $("cSend").title = b.email ? "" : "No email saved for this brand";
+  const m = lastEmail(id);
+  $("cHistory").hidden = !m;
+  if (m) $("cHistory").textContent = `Emailed ${when(m.sentAt)}${m.sentBy ? " by " + nameShow(m.sentBy) : ""}. `
+    + (m.repliedAt ? `Replied ${when(m.repliedAt)}: "${m.reply}"` : "No reply yet.");
+  sendId = uid();
   $("cMark").hidden = true;
   $("composer").showModal();
 }
@@ -1206,7 +1238,9 @@ function showChannel() {
   document.querySelectorAll(".seg [data-ch]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.ch === channel)));
   $("cBody").value = texts[channel] ?? "";
   $("cSubjectWrap").hidden = wa;
-  $("cWhatsapp").hidden = !wa; $("cEmail").hidden = wa;
+  const gmail = !!db.settings.url;
+  $("cWhatsapp").hidden = !wa; $("cEmail").hidden = wa; $("cSend").hidden = wa || !gmail;
+  $("cEmail").classList.toggle("primary", !gmail);
   $("cNote").textContent = wa && d && !d.whatsapp ? "This draft has no WhatsApp version, so its email text is shown."
     : !wa && d && !d.body ? "This draft has no email version, so its WhatsApp text is shown." : "";
 }
@@ -1225,6 +1259,27 @@ $("cEmail").addEventListener("click", () => {
   const b = db.brands.find((x) => x.id === composing);
   location.href = `mailto:${encodeURIComponent(b.email)}?subject=${encodeURIComponent($("cSubject").value)}&body=${encodeURIComponent($("cBody").value)}`;
   afterSend("Opened your email app");
+});
+// One id per message, so a retry after a dropped connection can't send it twice.
+let sendId = null;
+$("cSend").addEventListener("click", async () => {
+  const b = db.brands.find((x) => x.id === composing); if (!b) return;
+  const subject = $("cSubject").value.trim(), body = $("cBody").value.trim();
+  if (!subject || !body) return toast("Add a subject and a message first");
+  const btn = $("cSend"); btn.disabled = true; btn.textContent = "Sending…";
+  try {
+    const s = db.settings;
+    const { email } = await call({ action: "sendEmail", email: {
+      id: sendId, brandId: b.id, brand: b.brand, to: b.email, subject, body, sentBy: s.me, name: s.sender ? `${s.sender}, ${s.org}` : s.org } });
+    db.emails = db.emails.filter((m) => m.id !== email.id).concat(email); save();
+    sendId = uid();
+    $("composer").close();
+    if (["Not contacted", "Didn't pick up"].includes(statusOf(b.status).value)) setStatus(b.id, "Messaged");
+    else renderRows();
+    toast(`Email sent to ${b.brand}`);
+  } catch (err) {
+    toast(`Couldn't send: ${err.message === "Failed to fetch" ? "couldn't reach the sheet. Check your connection and try again" : err.message}`);
+  } finally { btn.disabled = false; btn.textContent = "Send email"; }
 });
 $("cCopy").addEventListener("click", async () => {
   const text = channel === "email" ? withSubject($("cSubject").value.trim(), $("cBody").value) : $("cBody").value;

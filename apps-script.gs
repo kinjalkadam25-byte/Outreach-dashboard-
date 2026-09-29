@@ -5,17 +5,24 @@
  *   1. Create a Google Sheet for the team. Extensions -> Apps Script.
  *   2. Replace everything in Code.gs with this file. Change TOKEN below to a
  *      long random phrase and save.
- *   3. Deploy -> New deployment -> type "Web app".
+ *   3. Pick "setup" in the function menu and press Run. Allow the permissions
+ *      it asks for (Sheets, and Gmail for sending emails and spotting replies).
+ *      It also starts a 10-minute timer that checks for replies.
+ *   4. Deploy -> New deployment -> type "Web app".
  *        Execute as:       Me
  *        Who has access:   Anyone
  *      Authorise when asked. Copy the Web app URL (ends in /exec).
- *   4. In the dashboard's "Sheet sync" tab, paste the URL and the same TOKEN.
+ *   5. In the dashboard's "Sheet sync" tab, paste the URL and the same TOKEN.
+ *
+ * Emails sent from the dashboard go out from the Gmail account of whoever did
+ * this setup, whoever presses Send. Gmail allows about 100 recipients a day on
+ * a personal account.
  *
  * "Anyone" means anyone with the URL *and* the token. Only share the token
  * with the finance team. After editing this script, deploy again
  * (Deploy -> Manage deployments -> edit -> New version) or changes won't apply.
  *
- * The script creates two tabs on first use: "Brands" and "Drafts". People can
+ * The script creates three tabs on first use: "Brands", "Drafts" and "Emails". People can
  * read and sort them freely. Don't rename or reorder the header columns.
  */
 
@@ -24,10 +31,14 @@ const TOKEN = 'change-me-to-a-long-random-phrase';
 // New columns go on the end, so a sheet made by an older version keeps lining up.
 const BRAND_COLS = ['id', 'brand', 'contact', 'phone', 'email', 'status', 'notes', 'createdAt', 'updatedAt', 'type', 'addedBy'];
 const DRAFT_COLS = ['id', 'title', 'subject', 'body', 'whatsapp'];
+const EMAIL_COLS = ['id', 'brandId', 'brand', 'to', 'subject', 'sentBy', 'sentAt', 'threadId', 'repliedAt', 'reply'];
+// Replies to emails older than this stop being looked for.
+const REPLY_WINDOW_DAYS = 60;
 
 function doGet(e) {
   if (!authorised_(e.parameter.token)) return json_({ ok: false, error: 'Wrong token' });
-  return json_({ ok: true, brands: read_('Brands', BRAND_COLS), drafts: read_('Drafts', DRAFT_COLS) });
+  if (e.parameter.replies) checkReplies();
+  return json_({ ok: true, brands: read_('Brands', BRAND_COLS), drafts: read_('Drafts', DRAFT_COLS), emails: read_('Emails', EMAIL_COLS) });
 }
 
 function doPost(e) {
@@ -46,11 +57,94 @@ function doPost(e) {
     if (req.action === 'upsertBrand') upsert_('Brands', BRAND_COLS, req.row);
     else if (req.action === 'deleteBrand') remove_('Brands', req.id);
     else if (req.action === 'saveDrafts') replaceAll_('Drafts', DRAFT_COLS, req.drafts || []);
+    else if (req.action === 'sendEmail') return json_({ ok: true, email: sendEmail_(req.email || {}) });
     else return json_({ ok: false, error: 'Unknown action' });
     return json_({ ok: true });
+  } catch (err) {
+    return json_({ ok: false, error: err.message });
   } finally {
     lock.releaseLock();
   }
+}
+
+// Run once from the editor: grants permissions and starts the reply timer.
+function setup() {
+  sheet_('Emails', EMAIL_COLS);
+  GmailApp.getInboxUnreadCount();
+  ScriptApp.getProjectTriggers()
+    .filter((t) => t.getHandlerFunction() === 'checkReplies')
+    .forEach((t) => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('checkReplies').timeBased().everyMinutes(10).create();
+}
+
+function sendEmail_(m) {
+  if (!m.id) throw new Error('Email has no id');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m.to || '')) throw new Error('That email address looks wrong');
+  if (!m.subject || !m.body) throw new Error('Add a subject and a message');
+  const sh = sheet_('Emails', EMAIL_COLS);
+  // A retry after a lost response must not send the same email twice.
+  const at = rowIndex_(sh, m.id);
+  if (at > 0) return rowObj_(sh, at, EMAIL_COLS);
+  const draft = GmailApp.createDraft(m.to, m.subject, m.body, m.name ? { name: m.name } : {});
+  const sent = draft.send();
+  const row = {
+    id: m.id, brandId: m.brandId, brand: m.brand, to: m.to, subject: m.subject, sentBy: m.sentBy,
+    sentAt: new Date().toISOString(), threadId: sent.getThread().getId(), repliedAt: '', reply: '',
+  };
+  write_(sh.getRange(sh.getLastRow() + 1, 1, 1, EMAIL_COLS.length), [EMAIL_COLS.map((c) => safe_(row[c]))]);
+  return row;
+}
+
+// Marks logged emails that have had a reply. Runs on the timer from setup()
+// and when someone presses "Sync now".
+function checkReplies() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return; // the next run will catch up
+  try {
+    checkReplies_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function checkReplies_() {
+  const sh = sheet_('Emails', EMAIL_COLS);
+  const last = sh.getLastRow();
+  if (last < 2) return;
+  const me = Session.getEffectiveUser().getEmail().toLowerCase();
+  const since = Date.now() - REPLY_WINDOW_DAYS * 864e5;
+  const rows = sh.getRange(2, 1, last - 1, EMAIL_COLS.length).getDisplayValues();
+  const col = (c) => EMAIL_COLS.indexOf(c);
+  rows.forEach((r, i) => {
+    const sentAt = new Date(r[col('sentAt')]).getTime();
+    if (!r[col('id')] || r[col('repliedAt')] || !(sentAt > since)) return;
+    const reply = findReply_(r[col('threadId')], r[col('to')], sentAt, me);
+    if (!reply) return;
+    const snippet = reply.getPlainBody().split(/\n\s*(On .+wrote:|-{2,}|>)/)[0].replace(/\s+/g, ' ').trim().slice(0, 200);
+    write_(sh.getRange(i + 2, col('repliedAt') + 1, 1, 2), [[reply.getDate().toISOString(), safe_(snippet)]]);
+  });
+}
+
+// A reply in the same thread, or a fresh email from the brand's address.
+function findReply_(threadId, to, sentAt, me) {
+  const notMine = (msg) => msg.getDate().getTime() > sentAt && msg.getFrom().toLowerCase().indexOf(me) < 0;
+  if (threadId) {
+    try {
+      const hit = GmailApp.getThreadById(threadId).getMessages().find(notMine);
+      if (hit) return hit;
+    } catch (err) {} // thread deleted
+  }
+  const threads = GmailApp.search('from:' + to + ' after:' + Math.floor(sentAt / 1000), 0, 5);
+  for (const t of threads) {
+    const hit = t.getMessages().find(notMine);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+function rowObj_(sh, at, cols) {
+  const r = sh.getRange(at, 1, 1, cols.length).getDisplayValues()[0];
+  return Object.fromEntries(cols.map((c, i) => [c, r[i]]));
 }
 
 function authorised_(token) {
