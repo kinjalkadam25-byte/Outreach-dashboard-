@@ -55,7 +55,9 @@ function doPost(e) {
   lock.waitLock(15000);
   try {
     if (req.action === 'upsertBrand') upsert_('Brands', BRAND_COLS, req.row);
+    else if (req.action === 'upsertBrands') upsertMany_('Brands', BRAND_COLS, req.rows || []);
     else if (req.action === 'deleteBrand') remove_('Brands', req.id);
+    else if (req.action === 'clearBrands') replaceAll_('Brands', BRAND_COLS, []);
     else if (req.action === 'saveDrafts') replaceAll_('Drafts', DRAFT_COLS, req.drafts || []);
     else if (req.action === 'sendEmail') return json_({ ok: true, email: sendEmail_(req.email || {}) });
     else return json_({ ok: false, error: 'Unknown action' });
@@ -187,6 +189,24 @@ function upsert_(name, cols, row) {
   const at = rowIndex_(sh, row.id);
   const r = at > 0 ? at : sh.getLastRow() + 1;
   write_(sh.getRange(r, 1, 1, cols.length), [cols.map((c) => safe_(row[c]))]);
+}
+
+// For imports: one read of the id column and one write for all new rows, so a
+// batch of hundreds stays well inside Apps Script's time limit. Rows already in
+// the sheet (a retried batch) are updated in place, never added twice.
+function upsertMany_(name, cols, rows) {
+  const sh = sheet_(name, cols);
+  const last = sh.getLastRow();
+  const ids = last < 2 ? [] : sh.getRange(2, 1, last - 1, 1).getDisplayValues().map((r) => r[0]);
+  const fresh = [];
+  rows.forEach((row) => {
+    if (!row || !row.id) throw new Error('Row has no id');
+    const values = cols.map((c) => safe_(row[c]));
+    const i = ids.indexOf(row.id);
+    if (i >= 0) write_(sh.getRange(i + 2, 1, 1, cols.length), [values]);
+    else fresh.push(values);
+  });
+  if (fresh.length) write_(sh.getRange(sh.getLastRow() + 1, 1, fresh.length, cols.length), fresh);
 }
 
 function remove_(name, id) {

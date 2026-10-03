@@ -247,6 +247,22 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
 .close:hover { color:var(--ink) }
 #cBody { min-height:220px }
 
+/* Import dialog */
+/* Header and footer stay put; the mapping and preview scroll between them */
+#importer { width:min(900px, calc(100vw - 32px)); max-height:calc(100dvh - 32px) }
+#importer[open] { display:flex; flex-direction:column }
+#importer .dbody { overflow-y:auto; flex:1 }
+.imap { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px 12px }
+.imap .label { display:block; font-size:12.5px; color:var(--ink-2); margin-bottom:4px }
+.isum { font-size:13.5px; margin:4px 0 10px }
+.isum b { font-weight:600 }
+.check { display:flex; align-items:center; gap:9px; font-size:13px; margin:0 0 12px; cursor:pointer; min-height:32px }
+.check input { width:16px; height:16px; margin:0; accent-color:var(--accent) }
+.ipreview { max-height:340px; overflow:auto }
+.ipreview thead th { position:sticky; top:0; background:var(--surface) }
+.ipreview td { font-size:13px; white-space:nowrap }
+.ipreview tr.dupe td { color:var(--ink-2) }
+
 .toast { position:fixed; left:50%; bottom:24px; transform:translateX(-50%); z-index:60; background:var(--surface-3);
   border:1px solid var(--line-2); color:var(--ink); padding:9px 14px; font-size:13px; box-shadow:0 10px 30px rgba(0,0,0,.4);
   width:max-content; max-width:calc(100vw - 32px); display:flex; align-items:center; gap:10px }
@@ -255,10 +271,10 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
 /* Touch screens: every control at least 44px tall (WCAG 2.5.5) */
 @media (pointer:coarse) {
   .btn, .btn.sm, .nav a, .seg button, .tokens button, .cs > button, .cs.compact > button, .cs.filter > button,
-    .toolbar .linkish, .toast .linkish, .syncpill, input[type], textarea { min-height:var(--tap) }
+    .toolbar .linkish, .toast .linkish, .syncpill, input[type]:not([type=checkbox]), textarea, .check { min-height:var(--tap) }
   .nav a { display:inline-flex; align-items:center }
   /* 16px text stops iOS Safari zooming in when a field is focused */
-  input[type], textarea { font-size:16px }
+  input[type]:not([type=checkbox]), textarea { font-size:16px }
   .tokens button { min-width:var(--tap) }
   .cs-pop li { min-height:var(--tap) }
 }
@@ -280,6 +296,7 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
   .page { padding:22px 16px 70px }
   h1 { font-size:20px }
   .row2, .dcols { grid-template-columns:1fr }
+  .imap { grid-template-columns:1fr 1fr }
   /* Status filters: one swipeable row of pills instead of a grid of tiles */
   .stats { display:flex; gap:6px; overflow-x:auto; margin:16px -16px; padding:0 16px 2px; scrollbar-width:none }
   .stat { flex:none; display:inline-flex; align-items:center; gap:7px; min-height:var(--tap); padding:0 14px; border-top-width:1px; border-top-color:var(--line) }
@@ -287,12 +304,12 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
   .stat span { order:1; font-size:13px; color:var(--ink-2) }
   .stat b { order:2; display:inline; font-size:13px; font-weight:600 }
   /* Each brand row becomes a card */
-  .tablewrap { overflow:visible }
-  table, tbody { display:block }
-  thead { display:none }
-  tbody tr { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 12px; padding:12px 14px;
+  #view-brands .tablewrap { overflow:visible }
+  #view-brands table, #view-brands tbody { display:block }
+  #view-brands thead { display:none }
+  #view-brands tbody tr { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 12px; padding:12px 14px;
     grid-template-areas:"brand status" "phone when" "type type" "act act" }
-  td { padding:0 }
+  #view-brands td { padding:0 }
   .c-brand { grid-area:brand } .c-phone { grid-area:phone; color:var(--ink-2) }
   .c-status { grid-area:status; justify-self:end } .c-when { grid-area:when; justify-self:end; align-self:center }
   td.c-type { grid-area:type; white-space:normal } td.c-type small { display:inline; margin-left:6px }
@@ -325,7 +342,12 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
         <h1>Brand outreach</h1>
         <p class="lede">Every brand the finance team is talking to, where each conversation stands, and the message to send next.</p>
       </div>
-      <button class="btn" type="button" id="exportCsv">Export CSV</button>
+      <div class="actions">
+        <button class="btn" type="button" id="importBtn">Import Excel</button>
+        <button class="btn" type="button" id="exportCsv">Export CSV</button>
+        <button class="btn ghost danger" type="button" id="clearAll" data-a="del">Clear all</button>
+        <input type="file" id="importFile" accept=".xlsx,.xls,.csv,.ods,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" hidden>
+      </div>
     </div>
 
     <div class="banner error" id="syncBanner" role="alert" hidden>
@@ -528,10 +550,38 @@ dialog::backdrop { background:rgba(5,6,8,.72) }
   <div class="dfoot">
     <button class="btn primary" type="button" id="cWhatsapp">Open in WhatsApp</button>
     <button class="btn primary" type="button" id="cSend">Send email</button>
-    <button class="btn" type="button" id="cEmail">Open in email app</button>
+    <button class="btn" type="button" id="cEmail">Open in Gmail</button>
     <button class="btn" type="button" id="cCopy">Copy</button>
     <span class="spacer"></span>
     <button class="btn ghost" type="button" id="cMark" hidden>Mark as messaged</button>
+  </div>
+</dialog>
+
+<!-- ─────────────── Import ─────────────── -->
+<dialog id="importer" aria-labelledby="iTitle">
+  <div class="dhead">
+    <div><p class="eyebrow">Import brands</p><h2 id="iTitle"></h2><p class="hint" id="iMeta"></p></div>
+    <button class="close" type="button" id="iClose" aria-label="Close">×</button>
+  </div>
+  <div class="dbody">
+    <div class="field" id="iSheetField"><span class="label" id="iSheetLabel">Sheet</span><div id="iSheetMount"></div></div>
+    <div class="field"><span class="label">Which column holds what</span>
+      <div class="imap" id="iMap"></div>
+      <div class="helper" id="iExtra"></div></div>
+    <div class="field" id="f-iby"><label for="iBy">Added by <span class="opt">for rows that don't name anyone</span></label>
+      <input id="iBy" type="text" list="teamNames" autocomplete="off" placeholder="Your name">
+      <div class="helper" data-hint=""></div></div>
+    <p class="isum" id="iSum" role="status"></p>
+    <label class="check" id="iDupWrap"><input type="checkbox" id="iDup"><span id="iDupText"></span></label>
+    <div class="panel tablewrap ipreview">
+      <table><thead><tr><th>Brand</th><th>Type</th><th>Number</th><th>Email</th><th>Status</th><th>Added by</th><th>Check</th></tr></thead>
+        <tbody id="iRows"></tbody></table>
+    </div>
+    <p class="hint" id="iMore"></p>
+  </div>
+  <div class="dfoot">
+    <button class="btn primary" type="button" id="iGo" autofocus>Import</button>
+    <button class="btn ghost" type="button" id="iCancel">Cancel</button>
   </div>
 </dialog>
 
@@ -566,8 +616,8 @@ const STATUS_ALIASES = {
   interested: "Interested", negotiating: "Interested",
   keepforlater: "Keep for later", later: "Keep for later",
   confirmed: "Confirmed",
-  rejected: "Rejected", declined: "Rejected",
-  invalidnumber: "Invalid number", wrongnumber: "Invalid number",
+  rejected: "Rejected", declined: "Rejected", notinterested: "Rejected",
+  invalidnumber: "Invalid number", wrongnumber: "Invalid number", wronginvalid: "Invalid number", invalid: "Invalid number",
 };
 // Categories from the tabs of the team's "CSI Sponsors list" sheet, with
 // clothing, gifting and accessories split out of its "miscellaneous" tab.
@@ -776,8 +826,12 @@ async function call(body) {
   // text/plain keeps this a "simple" request, which Apps Script accepts without a CORS preflight.
   const r = await fetch(db.settings.url, { method: "POST", body: JSON.stringify({ ...body, token: db.settings.token }) });
   const j = await readJSON(r);
-  if (!j.ok) throw new Error(j.error === "Unknown action" ? "the sheet's script is out of date. Copy the new script from Sheet sync, run setup, and deploy a new version"
-    : j.error || "The sheet refused the change");
+  if (!j.ok) {
+    const err = new Error(j.error === "Unknown action" ? "the sheet's script is out of date. Copy the new script from Sheet sync, run setup, and deploy a new version"
+      : j.error || "The sheet refused the change");
+    err.unknownAction = j.error === "Unknown action";
+    throw err;
+  }
   return j;
 }
 // Apps Script answers with an HTML page, not JSON, when it needs authorising again.
@@ -796,7 +850,21 @@ async function flush() {
   if (!db.settings.url || syncing) return !db.queue.length;
   syncing = true; setSync("busy", "Syncing…");
   try {
-    while (db.queue.length) { await call(db.queue[0]); db.queue.shift(); save(); }
+    while (db.queue.length) {
+      const op = db.queue[0];
+      try { await call(op); }
+      catch (err) {
+        // A script deployed before imports existed: send the batch one row at a time.
+        if (err.unknownAction && op.action === "upsertBrands") {
+          db.queue.splice(0, 1, ...op.rows.map((row) => ({ action: "upsertBrand", row }))); save(); continue;
+        }
+        if (err.unknownAction && op.action === "clearBrands") {
+          db.queue.splice(0, 1, ...op.ids.map((id) => ({ action: "deleteBrand", id }))); save(); continue;
+        }
+        throw err;
+      }
+      db.queue.shift(); save();
+    }
     db.settings.lastSync = now(); save(); refreshPill();
     return true;
   } catch (err) {
@@ -835,6 +903,8 @@ async function syncNow({ quiet } = {}) {
 }
 
 // ───────── Brands ─────────
+// Kept as a reference: it's out of the page while its "Delete all?" question shows.
+const clearAllBtn = $("clearAll");
 let filter = "", typeFilter = "", byFilter = "", query = "", editingId = null, dupConfirmed = false;
 const statusSel = chipSelect({ options: STATUSES, value: "Not contacted", labelledBy: "statusLabel" });
 $("statusMount").append(statusSel);
@@ -941,7 +1011,7 @@ $("brandForm").addEventListener("submit", (e) => {
   const brand = $("brand").value.trim(), phone = normPhone($("phone").value), email = $("email").value.trim();
   let ok = true;
   if (!brand) { setError("f-brand", "Enter the brand's name"); ok = false; }
-  if (phone.length !== 10) { setError("f-phone", phone ? "Enter 10 digits (a +91 or leading 0 is fine)" : "Enter a number"); ok = false; }
+  if (phone ? phone.length !== 10 : !email) { setError("f-phone", phone ? "Enter 10 digits (a +91 or leading 0 is fine)" : "Enter a number or an email"); ok = false; }
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError("f-email", "That doesn't look like an email address"); ok = false; }
   const type = typeSel.get(), addedBy = $("addedBy").value.trim();
   if (!type) { setError("f-type", "Pick what kind of brand this is"); ok = false; }
@@ -1017,11 +1087,13 @@ function renderRows() {
   none.hidden = list.length > 0;
   $("rows").closest("table").setAttribute("aria-busy", String(syncState === "busy" && !db.brands.length));
   if (syncState === "busy" && !db.brands.length) none.innerHTML = `<span class="loading">Loading brands from the Google Sheet…</span>`;
-  else if (!db.brands.length) none.innerHTML = `No brands yet.<br><button class="btn" type="button" data-empty="add">Add the first brand</button>`;
+  else if (!db.brands.length) none.innerHTML = `No brands yet.<br><button class="btn" type="button" data-empty="add">Add the first brand</button> <button class="btn ghost" type="button" data-empty="import">Import a spreadsheet</button>`;
   else none.innerHTML = `No brands match. Try part of the name, or at least three digits of the number.<br><button class="btn" type="button" data-empty="clear">Clear filters</button>`;
-  none.querySelector("[data-empty]")?.addEventListener("click", (e) => (e.target.dataset.empty === "add" ? openForm() : clearAllFilters()));
+  none.querySelectorAll("[data-empty]").forEach((x) => x.addEventListener("click", () =>
+    ({ add: openForm, import: () => $("importFile").click(), clear: clearAllFilters })[x.dataset.empty]()));
   $("shown").textContent = db.brands.length ? `${list.length} of ${db.brands.length}` : "";
   $("clearFilters").hidden = !(filter || typeFilter || byFilter || q);
+  clearAllBtn.hidden = !db.brands.length;
 }
 // Latest email to a brand: "Emailed 3 Oct · Replied 4 Oct".
 function lastEmail(id) {
@@ -1057,6 +1129,7 @@ function setStatus(id, status, undoing) {
   else toast(`${b.brand} → ${status}`, { label: "Undo", run: () => setStatus(id, prev, true) });
 }
 // Swaps a set of buttons for "Delete X? [Delete] [Keep]", in place of a native confirm().
+// onYes gets a function that puts the original buttons back.
 let askN = 0;
 function confirmInline(box, question, onYes) {
   const before = [...box.childNodes];
@@ -1066,7 +1139,7 @@ function confirmInline(box, question, onYes) {
   yes.setAttribute("aria-describedby", q.id); no.setAttribute("aria-describedby", q.id);
   const onKey = (e) => { if (e.key === "Escape") back(); };
   function back() { box.removeEventListener("keydown", onKey); box.replaceChildren(...before); before.find((n) => n.dataset?.a === "del")?.focus(); }
-  yes.addEventListener("click", () => { box.removeEventListener("keydown", onKey); onYes(); });
+  yes.addEventListener("click", () => { box.removeEventListener("keydown", onKey); onYes(back); });
   no.addEventListener("click", back); box.addEventListener("keydown", onKey);
   box.replaceChildren(q, yes, no); no.focus();
 }
@@ -1077,9 +1150,23 @@ function removeBrand(id) {
   if (editingId === id) resetForm();
   renderStats(); renderRows(); toast(`Deleted ${b.brand}`);
 }
+clearAllBtn.addEventListener("click", () => {
+  const n = db.brands.length, where = db.settings.url ? "the shared sheet, for the whole team" : "this browser";
+  confirmInline(clearAllBtn.parentElement, `Delete all ${plural(n, "brand")} from ${where}? Export CSV first if you might need them.`, (restore) => {
+    const gone = db.brands;
+    db.brands = []; save();
+    enqueue({ action: "clearBrands", ids: gone.map((b) => b.id) });
+    restore(); resetForm(); clearAllFilters(); renderFilters();
+    toast(`Deleted ${plural(n, "brand")}`, { label: "Undo", run: () => {
+      db.brands = [...gone, ...db.brands]; save();
+      for (let i = 0; i < gone.length; i += 200) enqueue({ action: "upsertBrands", rows: gone.slice(i, i + 200) });
+      renderAll(); toast(`Restored ${plural(n, "brand")}`);
+    } });
+  });
+});
 $("q").addEventListener("input", (e) => { query = e.target.value; renderRows(); });
 addEventListener("keydown", (e) => {
-  if (e.key === "/" && !e.target.closest("input, textarea, select, [contenteditable]") && !$("composer").open) {
+  if (e.key === "/" && !e.target.closest("input, textarea, select, [contenteditable]") && !$("composer").open && !$("importer").open) {
     e.preventDefault(); location.hash = "#brands"; $("q").focus();
   }
 });
@@ -1093,6 +1180,215 @@ $("exportCsv").addEventListener("click", () => {
   a.download = `brand-outreach-${new Date().toISOString().slice(0, 10)}.csv`;
   a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
+
+// ───────── Import from Excel / CSV ─────────
+// SheetJS is ~1 MB, so it's only fetched the first time someone imports.
+// 0.20.3 from SheetJS's own CDN: the npm/cdnjs 0.18 builds have known parser CVEs.
+let xlsxLoading;
+function loadXLSX() {
+  return (xlsxLoading ||= new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+    s.integrity = "sha384-EnyY0/GSHQGSxSgMwaIPzSESbqoOLSexfnSMN2AP+39Ckmn92stwABZynq1JyzdT";
+    s.crossOrigin = "anonymous";
+    s.onload = () => resolve(window.XLSX);
+    s.onerror = () => { xlsxLoading = null; s.remove(); reject(new Error("Couldn't load the spreadsheet reader. Check your connection and try again.")); };
+    document.head.append(s);
+  }));
+}
+const IMPORT_FIELDS = [
+  { key: "brand", label: "Brand name", words: ["brand", "brand name", "company", "company name", "name", "sponsor", "sponsor name", "organisation", "organization", "firm", "business"] },
+  { key: "phone", label: "Number", words: ["phone", "number", "phone number", "mobile", "mobile number", "contact number", "contact no", "phone no", "mob", "whatsapp", "tel", "telephone"] },
+  { key: "email", label: "Email", words: ["email", "e mail", "email id", "mail", "mail id", "email address"] },
+  { key: "contact", label: "Contact person", words: ["contact", "contact name", "contact person", "person", "spoc", "poc name"] },
+  { key: "type", label: "Brand type", words: ["type", "brand type", "category", "industry", "sector"] },
+  { key: "status", label: "Status", words: ["status", "stage", "response"] },
+  { key: "notes", label: "Notes", words: ["notes", "note", "remarks", "remark", "comments", "comment", "original note"] },
+  { key: "addedBy", label: "Added by", words: ["added by", "assigned to", "assigned", "owner", "handled by", "poc", "member"] },
+];
+// Columns this dashboard writes itself (in its CSV export) that mean nothing on import.
+const IMPORT_IGNORE = ["id", "createdat", "updatedat", "created at", "updated at"];
+// The team sheet's own categories ("Beverages", "Bank / NBFC", "Bagpacks"…) onto the dashboard's types.
+const TYPE_WORDS = [
+  ["Bank & finance", /bank|financ|nbfc|fintech|insur|invest|loan|\bcards?\b|credit|trading/],
+  ["Food & beverage", /food|bev|drink|cafe|restaurant|bakery|dessert|snack|chip|juice|\btea\b|coffee|choc|ice ?cream|sweet|protein|health bar|nutri|fmcg/],
+  ["Food stall", /stall/],
+  ["Gifting", /gift|hamper/],
+  ["Clothing", /cloth|apparel|fashion|wear|garment|textile/],
+  ["Accessories & jewellery", /access|jewel|bag|luggage|watch|eyewear|footwear|shoe/],
+  ["Coupons & experiences", /coupon|voucher|experience/],
+  ["Education", /edu|edtech|course|coach|tutor|learn|academy|institute/],
+  ["Entertainment", /entertain|music|gaming|media|film|movie|\bevents?\b|ott/],
+  ["Hospitality & travel", /hotel|hospitality|travel|tour|resort|\bstays?\b|villa|airline/],
+];
+function typeOf(raw) {
+  const s = String(raw || "").trim().toLowerCase();
+  if (!s) return "Other";
+  return BRAND_TYPES.find((t) => t.value.toLowerCase() === s)?.value || TYPE_WORDS.find(([, re]) => re.test(s))?.[0] || "Other";
+}
+const headKey = (h) => String(h || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function cellText(v) {
+  if (v == null) return "";
+  if (v instanceof Date) return isNaN(v) ? "" : v.toLocaleDateString();
+  return String(v).trim();
+}
+// "RONAK" → "Ronak", so imported names match the ones typed in the form.
+const tidyName = (s) => (s === s.toUpperCase() ? s.toLowerCase().replace(/(^|[\s.-])\p{L}/gu, (c) => c.toUpperCase()) : s);
+// "98765 43210 / 91369 45954": the first good number is kept, the rest go in the notes.
+function splitPhones(raw) {
+  const good = String(raw).split(/[\/,;|\n]+|\s(?:or|and)\s/i).map(normPhone).filter((d) => d.length === 10);
+  return { phone: good[0] || "", others: good.slice(1), bad: good.length || !String(raw).trim() ? "" : String(raw).trim() };
+}
+
+let imp = null;
+const iSheetSel = chipSelect({ options: [], labelledBy: "iSheetLabel", onChange: (v) => { pickSheet(v); renderImport(); } });
+$("iSheetMount").append(iSheetSel);
+const iMapSels = {};
+$("iMap").append(...IMPORT_FIELDS.map((f) => {
+  const box = document.createElement("div");
+  box.innerHTML = `<span class="label" id="im-${f.key}">${esc(f.label)}</span>`;
+  iMapSels[f.key] = chipSelect({ options: [], labelledBy: "im-" + f.key, onChange: (v) => { imp.map[f.key] = v; renderImport(); } });
+  box.append(iMapSels[f.key]);
+  return box;
+}));
+
+$("importBtn").addEventListener("click", () => $("importFile").click());
+$("importFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0]; e.target.value = "";
+  if (!file) return;
+  const btn = $("importBtn"); btn.disabled = true; btn.textContent = "Reading…";
+  try {
+    const XLSX = await loadXLSX();
+    // raw: CSV cells stay text, so numbers keep their leading zeros.
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array", raw: true, cellDates: true });
+    const sheets = wb.SheetNames.map((name) => ({ name, rows: XLSX.utils.sheet_to_json(wb.Sheets[name], { header: 1, raw: true, defval: "", blankrows: false }) }))
+      .filter((sh) => sh.rows.length);
+    if (!sheets.length) throw new Error(`${file.name} has no rows to import.`);
+    imp = { file: file.name, sheets };
+    iSheetSel.setOptions(sheets.map((sh) => ({ value: sh.name, label: `${sh.name} (${sh.rows.length - 1} rows)`, tone: "var(--ink-2)", plain: true })), sheets[0].name);
+    $("iSheetField").hidden = sheets.length < 2;
+    $("iTitle").textContent = file.name;
+    $("iBy").value = db.settings.me || db.settings.sender || ""; setError("f-iby", "");
+    $("iDup").checked = false;
+    pickSheet(sheets[0].name); renderImport();
+    $("importer").showModal();
+  } catch (err) {
+    toast(/^Couldn't|has no rows/.test(err.message) ? err.message : `Couldn't read ${file.name}. Save it as .xlsx or .csv and try again.`);
+  } finally { btn.disabled = false; btn.textContent = "Import Excel"; }
+});
+
+function pickSheet(name) {
+  const sh = imp.sheets.find((x) => x.name === name);
+  // Titles or blank lines can sit above the header: use the first row with two or more filled cells.
+  const at = Math.max(0, sh.rows.slice(0, 10).findIndex((r) => r.filter((c) => cellText(c)).length >= 2));
+  const headers = sh.rows[at].map((h, i) => cellText(h) || `Column ${i + 1}`);
+  imp.sheet = name; imp.headers = headers;
+  imp.rows = sh.rows.slice(at + 1).filter((r) => r.some((c) => cellText(c)));
+  // Exact header names first, then headers that contain one of the words.
+  const used = new Set(), map = {};
+  const claim = (f, test) => {
+    if (map[f.key] !== undefined) return;
+    const i = headers.findIndex((h, k) => !used.has(k) && test(headKey(h), f));
+    if (i >= 0) { map[f.key] = String(i); used.add(i); }
+  };
+  IMPORT_FIELDS.forEach((f) => claim(f, (h) => f.words.includes(h)));
+  IMPORT_FIELDS.forEach((f) => claim(f, (h) => f.words.some((w) => w.length >= 4 && h.includes(w))));
+  imp.map = Object.fromEntries(IMPORT_FIELDS.map((f) => [f.key, map[f.key] ?? ""]));
+  const opts = [{ value: "", label: "Not in this file", tone: "var(--ink-3)", plain: true }, ...headers.map((h, i) => ({ value: String(i), label: h, tone: "var(--ink-2)", plain: true }))];
+  IMPORT_FIELDS.forEach((f) => iMapSels[f.key].setOptions(opts, imp.map[f.key]));
+}
+
+// Turns the sheet into brand rows and sorts them into new ones and likely
+// duplicates. A row is a duplicate when its number or email is already saved,
+// or, with neither, when its brand name is. One company with several
+// contacts (different emails) imports as several rows.
+function buildImport() {
+  const m = imp.map, by = $("iBy").value.trim();
+  const get = (r, k) => (m[k] === "" ? "" : cellText(r[+m[k]]));
+  const mapped = new Set(Object.values(m).filter((v) => v !== "").map(Number));
+  const extra = imp.headers.map((h, i) => i).filter((i) => !mapped.has(i) && !IMPORT_IGNORE.includes(headKey(imp.headers[i])));
+  const seen = new Map();
+  const remember = (b) => {
+    if (b.phone) seen.set("p:" + b.phone, b.brand);
+    if (b.email) seen.set("e:" + b.email.toLowerCase(), b.brand);
+    seen.set("b:" + normBrand(b.brand), b.brand);
+  };
+  db.brands.forEach((b) => remember({ ...b, phone: normPhone(b.phone) }));
+  const out = { fresh: [], dupes: [], skipped: 0, extra: extra.map((i) => imp.headers[i]), needBy: 0 };
+  const t = now();
+  for (const r of imp.rows) {
+    const brand = get(r, "brand");
+    if (!brand) { out.skipped++; continue; }
+    const notes = [get(r, "notes")];
+    const ph = splitPhones(get(r, "phone"));
+    if (ph.others.length) notes.push("Other numbers: " + ph.others.map(fmtPhone).join(", "));
+    if (ph.bad) notes.push("Number: " + ph.bad);
+    let email = get(r, "email").split(/[\s,;\/]+/).find((x) => x.includes("@")) || "";
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { notes.push("Email: " + email); email = ""; }
+    const rawType = get(r, "type"), type = typeOf(rawType);
+    if (type === "Other" && rawType && !/^(other|uncategori[sz]ed|misc\w*)$/i.test(rawType)) notes.push("Category: " + rawType);
+    const names = get(r, "addedBy").split(/\s*[,&\/]\s*|\s+and\s+/i).filter(Boolean).map(tidyName);
+    if (names.length > 1) notes.push("Also assigned: " + names.slice(1).join(", "));
+    if (!names.length) out.needBy++;
+    extra.forEach((i) => { const v = cellText(r[i]); if (v) notes.push(`${imp.headers[i]}: ${v}`); });
+    const row = {
+      id: uid(), brand, contact: get(r, "contact"), phone: ph.phone, email, status: statusOf(get(r, "status")).value,
+      notes: notes.filter(Boolean).join("\n"), createdAt: t, updatedAt: t, type, addedBy: names[0] || by,
+    };
+    const key = [row.phone && "p:" + row.phone, row.email && "e:" + row.email.toLowerCase(), !row.phone && !row.email && "b:" + normBrand(brand)]
+      .find((k) => k && seen.has(k));
+    if (key) out.dupes.push({ row, match: seen.get(key) });
+    else out.fresh.push({ row });
+    remember(row);
+  }
+  return out;
+}
+
+const PREVIEW_MAX = 100;
+const plural = (n, one, many = one + "s") => `${n} ${n === 1 ? one : many}`;
+function renderImport() {
+  $("iMeta").textContent = imp.sheets.length > 1 ? `Sheet "${imp.sheet}" · ${plural(imp.rows.length, "row")}` : plural(imp.rows.length, "row");
+  const noBrand = imp.map.brand === "";
+  const res = noBrand ? { fresh: [], dupes: [], skipped: 0, extra: [], needBy: 0 } : buildImport();
+  imp.res = res;
+  $("iExtra").textContent = res.extra.length ? `Also copied into each brand's notes: ${res.extra.join(", ")}.` : "";
+  const take = res.fresh.length + ($("iDup").checked ? res.dupes.length : 0);
+  $("iSum").innerHTML = noBrand ? "Pick the column that holds the brand names."
+    : `<b>${plural(res.fresh.length, "new brand")}</b>`
+      + (res.dupes.length ? `, ${res.dupes.length} already on the list or repeated in the file` : "")
+      + (res.skipped ? `. ${plural(res.skipped, "row")} without a brand name ${res.skipped === 1 ? "is" : "are"} skipped` : "") + ".";
+  $("iDupWrap").hidden = !res.dupes.length;
+  $("iDupText").textContent = `Import the ${plural(res.dupes.length, "likely duplicate")} too`;
+  const list = [...res.fresh, ...res.dupes].slice(0, PREVIEW_MAX);
+  $("iRows").innerHTML = list.map(({ row: b, match }) => `<tr${match ? ' class="dupe"' : ""}>
+      <td><b>${esc(b.brand)}</b>${b.contact ? `<small style="display:block;color:var(--ink-2)">${esc(b.contact)}</small>` : ""}</td>
+      <td>${esc(b.type)}</td><td class="num">${esc(fmtPhone(b.phone) || "–")}</td><td>${esc(b.email || "–")}</td>
+      <td>${chipHTML(statusOf(b.status))}</td><td>${esc(b.addedBy || "–")}</td>
+      <td>${match ? chipHTML({ value: `Matches ${match}`, tone: "var(--warn)" }) : chipHTML({ value: "New", tone: "var(--good)" })}</td></tr>`).join("");
+  const total = res.fresh.length + res.dupes.length;
+  $("iMore").textContent = total > PREVIEW_MAX ? `Showing the first ${PREVIEW_MAX} of ${total} rows.` : "";
+  $("iGo").textContent = take ? `Import ${plural(take, "brand")}` : "Nothing to import";
+  $("iGo").disabled = !take;
+}
+$("iDup").addEventListener("change", renderImport);
+$("iBy").addEventListener("input", () => { setError("f-iby", ""); renderImport(); });
+$("iGo").addEventListener("click", () => {
+  const res = imp.res;
+  const rows = [...res.fresh, ...($("iDup").checked ? res.dupes : [])].map((x) => x.row);
+  if (rows.some((r) => !r.addedBy)) { setError("f-iby", `${plural(res.needBy, "row doesn't say who added it", "rows don't say who added them")}. Add your name.`); $("iBy").focus(); return; }
+  db.brands = [...rows, ...db.brands];
+  if (!db.settings.me) db.settings.me = $("iBy").value.trim();
+  save();
+  // Batches keep a big import to a few requests instead of one per brand.
+  for (let i = 0; i < rows.length; i += 200) enqueue({ action: "upsertBrands", rows: rows.slice(i, i + 200) });
+  $("importer").close();
+  clearAllFilters(); renderFilters();
+  toast(`Imported ${plural(rows.length, "brand")} from ${imp.file}`);
+});
+$("iCancel").addEventListener("click", () => $("importer").close());
+$("iClose").addEventListener("click", () => $("importer").close());
+$("importer").addEventListener("close", () => { closeOpen?.(false); });
+$("importer").addEventListener("click", (e) => { if (e.target === $("importer")) $("importer").close(); });
 
 // ───────── Drafts ─────────
 const TOKENS = ["{brand}", "{contact}", "{sender}", "{event}", "{org}"];
@@ -1209,7 +1505,9 @@ function openComposer(id) {
   const opts = db.drafts.map((d) => ({ value: d.id, label: d.title, tone: "var(--ink-2)", plain: true }));
   draftSel.setOptions(opts, opts.find((o) => o.value === pick)?.value);
   fillComposer();
-  setChannel("whatsapp");
+  setChannel(b.phone || !b.email ? "whatsapp" : "email");
+  $("cWhatsapp").disabled = !b.phone;
+  $("cWhatsapp").title = b.phone ? "" : "No number saved for this brand";
   $("cEmail").disabled = $("cSend").disabled = !b.email;
   $("cEmail").title = $("cSend").title = b.email ? "" : "No email saved for this brand";
   const m = lastEmail(id);
@@ -1257,8 +1555,12 @@ $("cWhatsapp").addEventListener("click", () => {
 });
 $("cEmail").addEventListener("click", () => {
   const b = db.brands.find((x) => x.id === composing);
-  location.href = `mailto:${encodeURIComponent(b.email)}?subject=${encodeURIComponent($("cSubject").value)}&body=${encodeURIComponent($("cBody").value)}`;
-  afterSend("Opened your email app");
+  const q = (k, v) => `${k}=${encodeURIComponent(v)}`;
+  // Computers get Gmail's compose window in a new tab. Phones keep mailto:, which
+  // opens the Gmail app there; Gmail's mobile site drops the subject and message.
+  if (matchMedia("(pointer:coarse)").matches) location.href = `mailto:${encodeURIComponent(b.email)}?${q("subject", $("cSubject").value)}&${q("body", $("cBody").value)}`;
+  else open(`https://mail.google.com/mail/?view=cm&fs=1&${q("to", b.email)}&${q("su", $("cSubject").value)}&${q("body", $("cBody").value)}`, "_blank", "noopener");
+  afterSend("Opened Gmail");
 });
 // One id per message, so a retry after a dropped connection can't send it twice.
 let sendId = null;
@@ -1333,7 +1635,7 @@ function renderAll() { renderFilters(); renderStats(); renderRows(); renderDraft
 route(); resetForm(); renderAll(); refreshPill();
 if (db.settings.url) syncNow();
 // Pick up teammates' changes every minute while the tab is open.
-setInterval(() => { if (db.settings.url && !document.hidden && !$("composer").open && !closeOpen) syncNow({ quiet: true }); }, 60000);
+setInterval(() => { if (db.settings.url && !document.hidden && !$("composer").open && !$("importer").open && !closeOpen) syncNow({ quiet: true }); }, 60000);
 
 // ───────── Particle field (same as the form prototype) ─────────
 (function () {
